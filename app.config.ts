@@ -32,7 +32,7 @@ const env = {
   appSlug: "versage-terres",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "",
+  logoUrl: "https://private-us-east-1.manuscdn.com/sessionFile/5otPgZDaEshDgBXaxDfq9z/sandbox/xocXEXjsJ9LM6dQYLS1KMt-img-1_1771946293000_na1fn_aWNvbg.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvNW90UGdaRGFFc2hEZ0JYYXhEZnE5ei9zYW5kYm94L3hvY1hFWGpzSjlMTTZkUVlMUzFLTXQtaW1nLTFfMTc3MTk0NjI5MzAwMF9uYTFmbl9hV052YmcucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=c3ef0KRNAUV3Snwfc9Km533nFjKtqxRoRUHoEzqNIgvjB44FYjcmdqTGI2yQ5V4eSu5BnArOJP1r-FSKhtZCE1a-B4aUqz4Ih4AvEYzlaF5lZvhgy-GArlb4BiZoRBJ7Um0dGGsn8ni4JmLln95a50MVqmfNNodGKWhZhmc-XTSUhBrfaNCEfJKAbyNcykBGx3O9zUWGieSP7PH2BTP0J9LmRlyKvJFfUtd-IO2NV-aGr4l6HgEIi9cBwjGNIbG0~LwGqK9W2H~oEe9UwusurDhVh~uPl1JT6rFaAWC-bO~0lI8O~yCZkKZ7Yg3sAJm7k7qy~g0MSZE6j7jP2WOESA__",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,

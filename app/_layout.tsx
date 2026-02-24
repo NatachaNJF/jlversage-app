@@ -17,6 +17,7 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { AppProvider } from "@/lib/app-context";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -82,14 +83,24 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
+          <AppProvider>
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
           {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="oauth/callback" />
+            <Stack.Screen name="chantier/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="chantier/nouveau" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="chantier/validation/[id]" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="chantier/offre/[id]" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="chantier/documents/[id]" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="camion/nouveau" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="incident/nouveau" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="incident/[id]" options={{ presentation: 'card' }} />
           </Stack>
           <StatusBar style="auto" />
+          </AppProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>
