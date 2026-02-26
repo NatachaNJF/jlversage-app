@@ -11,6 +11,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { emailNouvelUtilisateur, sendEmail } from "./email";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -75,6 +76,21 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+
+  // Notifier l'admin par email si c'est un nouvel utilisateur (pas le premier = admin)
+  if (!existing && !isFirstUser) {
+    try {
+      const adminUsers = await db.select().from(users).where(eq(users.role, "admin")).limit(1);
+      const admin = adminUsers[0];
+      if (admin?.email) {
+        const emailOpts = emailNouvelUtilisateur(admin.email, user.name ?? null, user.email ?? null);
+        await sendEmail(emailOpts);
+        console.log(`[DB] Email de notification envoyé à l'admin (${admin.email}) pour le nouvel utilisateur`);
+      }
+    } catch (err) {
+      console.warn("[DB] Impossible d'envoyer l'email de notification admin:", err);
+    }
+  }
 }
 
 export async function countUsers(): Promise<number> {
@@ -108,6 +124,19 @@ export async function updateUserAppRole(userId: number, appRole: "gestionnaire" 
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(users).set({ appRole }).where(eq(users.id, userId));
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
+}
+
+export async function deleteUser(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(users).where(eq(users.id, userId));
 }
 
 // ─── Chantiers ────────────────────────────────────────────────────────────────

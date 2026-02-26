@@ -1,9 +1,9 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
-import { router } from 'expo-router';
+import { useState } from 'react';
 
 const ROLE_LABELS: Record<string, string> = {
   gestionnaire: '👔 Gestionnaire',
@@ -15,22 +15,59 @@ const ROLE_COLORS: Record<string, string> = {
   prepose: '#10B981',
 };
 
+type AppRole = 'gestionnaire' | 'prepose';
+
 export default function UtilisateursScreen() {
   const colors = useColors();
   const { isAdmin, isGestionnaire } = useAuthContext();
+  const [showForm, setShowForm] = useState(false);
+  const [newNom, setNewNom] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState<AppRole>('prepose');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const usersQuery = trpc.users.list.useQuery(undefined, {
     enabled: isAdmin || isGestionnaire,
   });
 
   const updateRoleMutation = trpc.users.updateRole.useMutation({
+    onSuccess: () => { usersQuery.refetch(); },
+    onError: (err) => { Alert.alert('Erreur', err.message || 'Impossible de modifier le rôle.'); },
+  });
+
+  const createUserMutation = trpc.users.create.useMutation({
     onSuccess: () => {
       usersQuery.refetch();
+      setShowForm(false);
+      setNewNom(''); setNewEmail(''); setNewRole('prepose'); setFormError(null);
+      Alert.alert('Succès', 'Utilisateur créé et email d\'invitation envoyé.');
     },
-    onError: (err) => {
-      Alert.alert('Erreur', err.message || 'Impossible de modifier le rôle.');
-    },
+    onError: (err) => { setFormError(err.message); },
   });
+
+  const deleteUserMutation = trpc.users.delete.useMutation({
+    onSuccess: () => { usersQuery.refetch(); },
+    onError: (err) => { Alert.alert('Erreur', err.message || 'Impossible de supprimer l\'utilisateur.'); },
+  });
+
+  const handleCreate = () => {
+    setFormError(null);
+    if (!newNom.trim()) { setFormError('Le nom est requis.'); return; }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) { setFormError('Email invalide.'); return; }
+    createUserMutation.mutate({ name: newNom.trim(), email: newEmail.trim(), appRole: newRole });
+  };
+
+  const handleDeleteUser = (userId: number, userName: string | null) => {
+    Alert.alert(
+      'Supprimer l\'utilisateur',
+      `Supprimer ${userName ?? 'cet utilisateur'} ? Cette action est irréversible.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: () => deleteUserMutation.mutate({ userId }) },
+      ]
+    );
+  };
 
   // Rediriger si pas gestionnaire ni admin
   if (!isAdmin && !isGestionnaire) {
@@ -39,21 +76,6 @@ export default function UtilisateursScreen() {
         <View style={styles.center}>
           <Text style={[styles.noAccessText, { color: colors.muted }]}>
             Accès réservé à l'administrateur.
-          </Text>
-        </View>
-      </ScreenContainer>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <ScreenContainer>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Utilisateurs</Text>
-        </View>
-        <View style={styles.center}>
-          <Text style={[styles.noAccessText, { color: colors.muted }]}>
-            🔒 La gestion des rôles est réservée à l'administrateur.
           </Text>
         </View>
       </ScreenContainer>
@@ -81,12 +103,79 @@ export default function UtilisateursScreen() {
     <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Gestion des utilisateurs</Text>
+        <Pressable
+          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          onPress={() => { setShowForm(!showForm); setFormError(null); }}
+        >
+          <Text style={styles.addBtnText}>{showForm ? 'Annuler' : '+ Ajouter'}</Text>
+        </Pressable>
       </View>
+
+      {/* Formulaire de création */}
+      {showForm && (
+        <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.formTitle, { color: colors.foreground }]}>Nouvel utilisateur</Text>
+
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Nom complet *</Text>
+          <TextInput
+            style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+            value={newNom}
+            onChangeText={setNewNom}
+            placeholder="Jean Dupont"
+            placeholderTextColor={colors.muted}
+            returnKeyType="next"
+          />
+
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Email *</Text>
+          <TextInput
+            style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+            value={newEmail}
+            onChangeText={setNewEmail}
+            placeholder="jean.dupont@exemple.be"
+            placeholderTextColor={colors.muted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="done"
+          />
+
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Rôle *</Text>
+          <View style={styles.rolePickerRow}>
+            {(['gestionnaire', 'prepose'] as AppRole[]).map((r) => (
+              <Pressable
+                key={r}
+                style={[styles.roleChip, { backgroundColor: newRole === r ? ROLE_COLORS[r] : 'transparent', borderColor: ROLE_COLORS[r] }]}
+                onPress={() => setNewRole(r)}
+              >
+                <Text style={{ color: newRole === r ? '#fff' : ROLE_COLORS[r], fontWeight: '700', fontSize: 13 }}>
+                  {r === 'gestionnaire' ? 'Gestionnaire' : 'Préposé'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {formError && <Text style={{ color: colors.error, fontSize: 13, marginTop: 6 }}>{formError}</Text>}
+
+          <Pressable
+            style={[styles.createBtn, { backgroundColor: colors.primary, opacity: createUserMutation.isPending ? 0.6 : 1 }]}
+            onPress={handleCreate}
+            disabled={createUserMutation.isPending}
+          >
+            {createUserMutation.isPending
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.createBtnText}>Créer et envoyer l'invitation</Text>
+            }
+          </Pressable>
+
+          <Text style={[styles.formHint, { color: colors.muted }]}>
+            Un email d'invitation sera envoyé automatiquement. L'utilisateur devra se connecter avec ce compte email via Manus.
+          </Text>
+        </View>
+      )}
 
       {/* Info admin */}
       <View style={[styles.infoBanner, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '40' }]}>
         <Text style={[styles.infoBannerText, { color: colors.primary }]}>
-          🔑 En tant qu'administrateur, vous pouvez attribuer ou modifier le rôle de chaque utilisateur. Les rôles sont appliqués côté serveur.
+          Attribuez un rôle à chaque utilisateur. Les permissions sont appliquées côté serveur.
         </Text>
       </View>
 
@@ -168,24 +257,36 @@ export default function UtilisateursScreen() {
                       </Text>
                     </View>
 
-                    {/* Bouton changer rôle (sauf pour l'admin) */}
+                    {/* Boutons action (sauf pour l'admin) */}
                     {!isUserAdmin && (
-                      <Pressable
-                        onPress={() => handleChangeRole(user.id, user.name, appRole)}
-                        disabled={updateRoleMutation.isPending}
-                        style={({ pressed }) => [
-                          styles.changeRoleBtn,
-                          { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
-                        ]}
-                      >
-                        {updateRoleMutation.isPending ? (
-                          <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                          <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
-                            → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
-                          </Text>
-                        )}
-                      </Pressable>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Pressable
+                          onPress={() => handleChangeRole(user.id, user.name, appRole)}
+                          disabled={updateRoleMutation.isPending}
+                          style={({ pressed }) => [
+                            styles.changeRoleBtn,
+                            { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
+                          ]}
+                        >
+                          {updateRoleMutation.isPending ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
+                              → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
+                            </Text>
+                          )}
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleDeleteUser(user.id, user.name)}
+                          disabled={deleteUserMutation.isPending}
+                          style={({ pressed }) => [
+                            styles.changeRoleBtn,
+                            { borderColor: colors.error, opacity: pressed ? 0.7 : 1 }
+                          ]}
+                        >
+                          <Text style={[styles.changeRoleBtnText, { color: colors.error }]}>Supprimer</Text>
+                        </Pressable>
+                      </View>
                     )}
                   </View>
 
@@ -235,8 +336,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 0.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 20, fontWeight: '700' },
+  addBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  formCard: { margin: 16, padding: 16, borderRadius: 12, borderWidth: 1 },
+  formTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4, marginTop: 10 },
+  textInput: { borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14 },
+  rolePickerRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  roleChip: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 2, alignItems: 'center' },
+  createBtn: { marginTop: 14, padding: 14, borderRadius: 10, alignItems: 'center' },
+  createBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  formHint: { fontSize: 11, marginTop: 10, lineHeight: 16 },
   infoBanner: {
     marginHorizontal: 16,
     marginTop: 12,

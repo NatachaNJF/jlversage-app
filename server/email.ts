@@ -143,6 +143,55 @@ export function emailRefusValidation(
   };
 }
 
+export function emailNouvelUtilisateur(
+  adminEmail: string,
+  userName: string | null,
+  userEmail: string | null,
+) {
+  return {
+    to: adminEmail,
+    subject: "JL Versage — Nouvel utilisateur connecté",
+    html: `
+      <p>Bonjour,</p>
+      <p>Un nouvel utilisateur vient de se connecter à l'application <strong>JL Versage</strong> pour la première fois.</p>
+      <table style="border-collapse:collapse;width:100%;max-width:500px">
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Nom</td><td style="padding:8px;border:1px solid #ddd">${userName ?? 'Non renseigné'}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Email</td><td style="padding:8px;border:1px solid #ddd">${userEmail ?? 'Non renseigné'}</td></tr>
+      </table>
+      <p style="background:#fff3cd;padding:12px;border-left:4px solid #ffc107">
+        Cet utilisateur est en attente d'un rôle. Connectez-vous à l'application et allez dans l'onglet <strong>Utilisateurs</strong> pour lui attribuer le rôle Gestionnaire ou Préposé.
+      </p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne</p>
+    `,
+    text: `Nouvel utilisateur : ${userName ?? 'Inconnu'} (${userEmail ?? 'email inconnu'}).\n\nConnectez-vous à l'application pour lui attribuer un rôle.`,
+  };
+}
+
+export function emailNouvelUtilisateurCreation(
+  userEmail: string,
+  userName: string,
+  appRole: string,
+) {
+  const roleLabel = appRole === 'gestionnaire' ? 'Gestionnaire' : 'Préposé';
+  return {
+    to: userEmail,
+    subject: "JL Versage — Votre accès à l'application",
+    html: `
+      <p>Bonjour ${userName},</p>
+      <p>Un compte vous a été créé sur l'application <strong>JL Versage</strong> avec le rôle <strong>${roleLabel}</strong>.</p>
+      <p>Pour accéder à l'application :</p>
+      <ol>
+        <li>Téléchargez l'application <strong>Expo Go</strong> sur votre téléphone</li>
+        <li>Ou ouvrez l'application dans votre navigateur</li>
+        <li>Connectez-vous avec votre compte Manus (email : ${userEmail})</li>
+      </ol>
+      <p>Votre accès est immédiatement actif.</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne</p>
+    `,
+    text: `Bonjour ${userName},\n\nUn compte ${roleLabel} vous a été créé sur l'application JL Versage.\n\nConnectez-vous avec votre compte Manus (email : ${userEmail}).`,
+  };
+}
+
 export function emailVolumeAtteint(
   societeNom: string,
   societeEmail: string,

@@ -76,3 +76,10 @@
 - [x] Écran "En attente de rôle" si l'utilisateur n'a pas encore de rôle attribué
 - [x] Accès gestion utilisateurs pour gestionnaire (pas seulement admin système)
 - [x] Onglet Utilisateurs visible pour gestionnaire et admin
+
+## Améliorations v6 — Gestion utilisateurs
+
+- [ ] Email automatique à l'admin lors d'une nouvelle connexion (nom + email du nouvel utilisateur)
+- [ ] Formulaire de création manuelle d'utilisateur (nom, email, rôle) dans l'écran Utilisateurs
+- [ ] Backend : procédure tRPC users.create pour créer un utilisateur manuellement
+- [ ] Backend : email de notification à l'admin lors d'un nouvel upsertUser

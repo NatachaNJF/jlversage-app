@@ -58,7 +58,6 @@ export const appRouter = router({
 
   users: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      // Accessible aux admins système ET aux gestionnaires
       const isAdmin = ctx.user.role === "admin";
       const isGestionnaire = ctx.user.appRole === "gestionnaire";
       if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
@@ -67,11 +66,58 @@ export const appRouter = router({
     updateRole: protectedProcedure
       .input(z.object({ userId: z.number(), appRole: z.enum(["gestionnaire", "prepose"]) }))
       .mutation(async ({ ctx, input }) => {
-        // Accessible aux admins système ET aux gestionnaires
         const isAdmin = ctx.user.role === "admin";
         const isGestionnaire = ctx.user.appRole === "gestionnaire";
         if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
         await db.updateUserAppRole(input.userId, input.appRole);
+        return { success: true };
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1, "Nom requis"),
+        email: z.string().email("Email invalide"),
+        appRole: z.enum(["gestionnaire", "prepose"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const isAdmin = ctx.user.role === "admin";
+        const isGestionnaire = ctx.user.appRole === "gestionnaire";
+        if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
+        // Vérifier si l'email existe déjà
+        const existing = await db.getUserByEmail(input.email);
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "Un utilisateur avec cet email existe déjà" });
+        // Créer l'utilisateur avec un openId fictif basé sur l'email
+        const openId = `manual_${input.email.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`;
+        await db.upsertUser({
+          openId,
+          name: input.name,
+          email: input.email,
+          loginMethod: "manual",
+          lastSignedIn: new Date(),
+        });
+        // Récupérer l'utilisateur créé pour mettre à jour son appRole
+        const newUser = await db.getUserByEmail(input.email);
+        if (newUser) {
+          await db.updateUserAppRole(newUser.id, input.appRole);
+          // Envoyer un email de bienvenue
+          try {
+            const { emailNouvelUtilisateurCreation, sendEmail } = await import("./email");
+            const emailOpts = emailNouvelUtilisateurCreation(input.email, input.name, input.appRole);
+            await sendEmail(emailOpts);
+          } catch (err) {
+            console.warn("[Users] Email de bienvenue non envoyé:", err);
+          }
+        }
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const isAdmin = ctx.user.role === "admin";
+        const isGestionnaire = ctx.user.appRole === "gestionnaire";
+        if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
+        // Ne pas permettre de supprimer son propre compte
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Impossible de supprimer votre propre compte" });
+        await db.deleteUser(input.userId);
         return { success: true };
       }),
   }),
