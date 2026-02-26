@@ -257,25 +257,26 @@ export default function UtilisateursScreen() {
                       </Text>
                     </View>
 
-                    {/* Boutons action (sauf pour l'admin) */}
-                    {!isUserAdmin && (
-                      <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Pressable
-                          onPress={() => handleChangeRole(user.id, user.name, appRole)}
-                          disabled={updateRoleMutation.isPending}
-                          style={({ pressed }) => [
-                            styles.changeRoleBtn,
-                            { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
-                          ]}
-                        >
-                          {updateRoleMutation.isPending ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
-                          ) : (
-                            <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
-                              → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
-                            </Text>
-                          )}
-                        </Pressable>
+                    {/* Boutons action */}
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                        {!isUserAdmin && (
+                          <Pressable
+                            onPress={() => handleChangeRole(user.id, user.name, appRole)}
+                            disabled={updateRoleMutation.isPending}
+                            style={({ pressed }) => [
+                              styles.changeRoleBtn,
+                              { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
+                            ]}
+                          >
+                            {updateRoleMutation.isPending ? (
+                              <ActivityIndicator size="small" color={colors.primary} />
+                            ) : (
+                              <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
+                                → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
+                              </Text>
+                            )}
+                          </Pressable>
+                        )}
                         <Pressable
                           onPress={() => handleDeleteUser(user.id, user.name)}
                           disabled={deleteUserMutation.isPending}
@@ -287,7 +288,6 @@ export default function UtilisateursScreen() {
                           <Text style={[styles.changeRoleBtnText, { color: colors.error }]}>Supprimer</Text>
                         </Pressable>
                       </View>
-                    )}
                   </View>
 
                   {/* Login method */}

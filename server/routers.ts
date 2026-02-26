@@ -116,8 +116,12 @@ export const appRouter = router({
         const isAdmin = ctx.user.role === "admin";
         const isGestionnaire = ctx.user.appRole === "gestionnaire";
         if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
-        // Ne pas permettre de supprimer son propre compte
-        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Impossible de supprimer votre propre compte" });
+        // Si l'utilisateur supprime son propre compte admin, vérifier qu'il n'est pas le seul admin
+        if (input.userId === ctx.user.id && isAdmin) {
+          const allUsers = await db.getAllUsers();
+          const adminCount = allUsers.filter((u: any) => u.role === 'admin').length;
+          if (adminCount <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Impossible de supprimer le seul compte administrateur" });
+        }
         await db.deleteUser(input.userId);
         return { success: true };
       }),

@@ -85,6 +85,10 @@
 - [ ] Backend : email de notification à l'admin lors d'un nouvel upsertUser
 
 ## Corrections v7 — OAuth mobile et emails
-- [ ] Corriger le schéma OAuth pour Expo Go (exp:// → manus*)
-- [ ] Corriger l'envoi d'email lors de la création manuelle d'utilisateur
-- [ ] Vérifier la configuration du redirect_uri dans constants/oauth.ts
+- [x] Corriger le schéma OAuth pour Expo Go (exp:// → WebBrowser)
+- [x] Corriger l'envoi d'email lors de la création manuelle d'utilisateur
+- [x] Vérifier la configuration du redirect_uri dans constants/oauth.ts
+
+## Correction suppression utilisateurs
+- [x] Corriger la suppression d'un utilisateur dans l'écran Utilisateurs
+- [x] Permettre de supprimer son propre compte de test (sauf le dernier admin)
