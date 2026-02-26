@@ -20,7 +20,7 @@ export default function UtilisateursScreen() {
   const { isAdmin, isGestionnaire } = useAuthContext();
 
   const usersQuery = trpc.users.list.useQuery(undefined, {
-    enabled: isAdmin,
+    enabled: isAdmin || isGestionnaire,
   });
 
   const updateRoleMutation = trpc.users.updateRole.useMutation({
@@ -32,7 +32,7 @@ export default function UtilisateursScreen() {
     },
   });
 
-  // Rediriger si pas admin
+  // Rediriger si pas gestionnaire ni admin
   if (!isAdmin && !isGestionnaire) {
     return (
       <ScreenContainer>

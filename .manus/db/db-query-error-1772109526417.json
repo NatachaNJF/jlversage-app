@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE users SET role = 'admin', \"appRole\" = 'gestionnaire' WHERE id = (SELECT id FROM users LIMIT 1); SELECT id, name, email, role, \"appRole\" FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute UPDATE users SET role = 'admin', \"appRole\" = 'gestionnaire' WHERE id = (SELECT id FROM users LIMIT 1); SELECT id, name, email, role, \"appRole\" FROM users;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 42 near \"\"appRole\" = 'gestionnaire' WHERE id = (SELECT id FROM users LIMIT 1)\""
+  ]
+}

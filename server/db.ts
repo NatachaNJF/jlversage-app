@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   chantiers,
@@ -32,6 +32,16 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
+
+  // Vérifier si l'utilisateur existe déjà
+  const existing = await getUserByOpenId(user.openId);
+
+  // Si l'utilisateur existe déjà et est admin, NE JAMAIS écraser son rôle
+  const isExistingAdmin = existing?.role === "admin";
+
+  // Si aucun utilisateur n'existe encore dans la base, ce premier utilisateur devient admin
+  const isFirstUser = !existing && (await countUsers()) === 0;
+
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
   const textFields = ["name", "email", "loginMethod"] as const;
@@ -47,16 +57,31 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
-  if (user.role !== undefined) {
-    values.role = user.role;
-    updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
+
+  // Attribution du rôle système :
+  // - Si l'utilisateur est déjà admin → ne pas toucher au rôle
+  // - Si c'est le premier utilisateur → admin automatiquement
+  // - Sinon → rôle "user" par défaut
+  if (!isExistingAdmin) {
+    if (isFirstUser || user.openId === ENV.ownerOpenId) {
+      values.role = "admin";
+      // Ne pas mettre dans updateSet pour ne pas écraser si déjà admin
+    } else if (!existing) {
+      values.role = "user";
+    }
+    // Si l'utilisateur existe et n'est pas admin, ne pas changer son rôle système
   }
+
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+}
+
+export async function countUsers(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: count(users.id) }).from(users);
+  return result[0]?.count ?? 0;
 }
 
 export async function getUserByOpenId(openId: string) {

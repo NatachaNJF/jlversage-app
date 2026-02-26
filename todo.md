@@ -68,3 +68,11 @@
 - [x] Corriger les imports et rendu sur navigateur
 - [x] Ajouter écran gestion des utilisateurs (admin : liste, attribution rôle)
 - [x] Backend : procédure tRPC pour lister et modifier les rôles utilisateurs
+
+## Corrections v4 — Gestion des rôles
+
+- [x] Premier utilisateur connecté reçoit automatiquement le rôle admin
+- [x] Le rôle admin est préservé lors des reconnexions (ne pas écraser)
+- [x] Écran "En attente de rôle" si l'utilisateur n'a pas encore de rôle attribué
+- [x] Accès gestion utilisateurs pour gestionnaire (pas seulement admin système)
+- [x] Onglet Utilisateurs visible pour gestionnaire et admin

@@ -86,6 +86,7 @@ export default function RootLayout() {
           <AuthProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="login" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="attente-role" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="oauth/callback" />
             <Stack.Screen name="chantier/[id]" options={{ presentation: 'card' }} />

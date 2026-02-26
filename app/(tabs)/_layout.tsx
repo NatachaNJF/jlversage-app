@@ -77,7 +77,7 @@ export default function TabLayout() {
         options={{
           title: "Utilisateurs",
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.fill" color={color} />,
-          tabBarItemStyle: isAdmin ? {} : { display: 'none' },
+          tabBarItemStyle: (isAdmin || isGestionnaire) ? {} : { display: 'none' },
         }}
       />
       <Tabs.Screen

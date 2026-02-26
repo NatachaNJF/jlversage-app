@@ -58,13 +58,19 @@ export const appRouter = router({
 
   users: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      // Accessible aux admins système ET aux gestionnaires
+      const isAdmin = ctx.user.role === "admin";
+      const isGestionnaire = ctx.user.appRole === "gestionnaire";
+      if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
       return db.getAllUsers();
     }),
     updateRole: protectedProcedure
       .input(z.object({ userId: z.number(), appRole: z.enum(["gestionnaire", "prepose"]) }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        // Accessible aux admins système ET aux gestionnaires
+        const isAdmin = ctx.user.role === "admin";
+        const isGestionnaire = ctx.user.appRole === "gestionnaire";
+        if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
         await db.updateUserAppRole(input.userId, input.appRole);
         return { success: true };
       }),

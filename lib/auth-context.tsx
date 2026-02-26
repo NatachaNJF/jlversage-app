@@ -28,20 +28,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isGestionnaire = isAdmin || appRole === 'gestionnaire';
   const isPrepose = !isAdmin && appRole === 'prepose';
 
+  // Utilisateur connecté mais sans rôle attribué
+  const hasNoRole = auth.isAuthenticated && !isAdmin && !appRole;
+
   // Redirection automatique vers login si non connecté
   useEffect(() => {
     if (auth.loading) return;
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'oauth';
+    const inWaitingGroup = (segments[0] as string) === 'attente-role';
 
     if (!auth.isAuthenticated && !inAuthGroup) {
       // Non connecté → rediriger vers login
       router.replace('/login');
     } else if (auth.isAuthenticated && inAuthGroup) {
       // Connecté et sur login → rediriger vers l'app
+      if (hasNoRole) {
+        router.replace('/attente-role' as any);
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else if (auth.isAuthenticated && hasNoRole && !inWaitingGroup && !inAuthGroup) {
+      // Connecté mais sans rôle → écran d'attente
+      router.replace('/attente-role' as any);
+    } else if (auth.isAuthenticated && !hasNoRole && inWaitingGroup) {
+      // A maintenant un rôle → aller vers l'app
       router.replace('/(tabs)');
     }
-  }, [auth.isAuthenticated, auth.loading, segments]);
+  }, [auth.isAuthenticated, auth.loading, segments, hasNoRole]);
 
   return (
     <AuthContext.Provider value={{

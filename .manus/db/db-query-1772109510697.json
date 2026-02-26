@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, name, email, role, \"appRole\", \"loginMethod\", \"lastSignedIn\" FROM users ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute SELECT id, name, email, role, \"appRole\", \"loginMethod\", \"lastSignedIn\" FROM users ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "natacha.jerouville",
+      "email": "natacha.jerouville@jerouville.be",
+      "role": "admin",
+      "appRole": "appRole",
+      "loginMethod": "loginMethod",
+      "lastSignedIn": "lastSignedIn"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tappRole\tloginMethod\tlastSignedIn\n1\tnatacha.jerouville\tnatacha.jerouville@jerouville.be\tadmin\tappRole\tloginMethod\tlastSignedIn\n",
+  "stderr": "",
+  "execution_time_ms": 107
+}
