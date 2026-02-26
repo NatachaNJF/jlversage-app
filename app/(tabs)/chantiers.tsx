@@ -1,223 +1,218 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useMemo } from "react";
+import { useState } from 'react';
+import {
+  View, Text, FlatList, Pressable, StyleSheet, TextInput, ActivityIndicator,
+} from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useAuthContext } from '@/lib/auth-context';
+import { trpc } from '@/lib/trpc';
+import { useColors } from '@/hooks/use-colors';
 
-import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
-import { useColors } from "@/hooks/use-colors";
-import { Chantier, ChantierStatut, STATUT_LABELS, STATUT_COLORS } from "@/types";
-
-const FILTRES: { label: string; valeur: ChantierStatut | 'tous' }[] = [
-  { label: 'Tous', valeur: 'tous' },
-  { label: 'Autorisés', valeur: 'autorise' },
-  { label: 'En cours', valeur: 'en_cours' },
-  { label: 'En attente', valeur: 'validation_admin' },
-  { label: 'Clôturés', valeur: 'cloture' },
+const STATUTS = [
+  { key: 'tous', label: 'Tous' },
+  { key: 'demande', label: 'Demande' },
+  { key: 'offre_envoyee', label: 'Offre' },
+  { key: 'validation_admin', label: 'Validation' },
+  { key: 'autorise', label: 'Autorisé' },
+  { key: 'en_cours', label: 'En cours' },
+  { key: 'volume_atteint', label: 'Vol. atteint' },
+  { key: 'refuse', label: 'Refusé' },
+  { key: 'cloture', label: 'Clôturé' },
 ];
 
-function ChantierItem({ chantier, onPress }: { chantier: Chantier; onPress: () => void }) {
-  const colors = useColors();
-  const statutColor = STATUT_COLORS[chantier.statut] || colors.muted;
-  const pct = chantier.volumeDeclare
-    ? Math.min(100, Math.round((chantier.tonnageAccepte / chantier.volumeDeclare) * 100))
-    : 0;
+const STATUT_COLORS: Record<string, string> = {
+  demande: '#6B7280', analyse: '#F59E0B', offre_envoyee: '#3B82F6',
+  documents_demandes: '#8B5CF6', validation_admin: '#F97316',
+  autorise: '#10B981', en_cours: '#059669', volume_atteint: '#EF4444',
+  cloture: '#6B7280', refuse: '#DC2626',
+};
 
-  return (
-    <TouchableOpacity
-      style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <View style={styles.itemHeader}>
-        <View style={styles.itemLeft}>
-          <Text style={[styles.itemNom, { color: colors.foreground }]} numberOfLines={1}>
-            {chantier.societe.nom}
-          </Text>
-          <Text style={[styles.itemLoc, { color: colors.muted }]} numberOfLines={1}>
-            {chantier.localisationChantier}
-          </Text>
-        </View>
-        <View style={[styles.statutBadge, { backgroundColor: statutColor + '20' }]}>
-          <Text style={[styles.statutText, { color: statutColor }]}>
-            {STATUT_LABELS[chantier.statut]}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.itemFooter}>
-        <View style={styles.itemMeta}>
-          <IconSymbol name="scalemass.fill" size={12} color={colors.muted} />
-          <Text style={[styles.itemMetaText, { color: colors.muted }]}>
-            {chantier.tonnageAccepte.toFixed(1)} / {(chantier.volumeDeclare || chantier.volumeEstime).toFixed(0)} T
-          </Text>
-        </View>
-        <View style={styles.itemMeta}>
-          <IconSymbol name="calendar" size={12} color={colors.muted} />
-          <Text style={[styles.itemMetaText, { color: colors.muted }]}>
-            Cl. {chantier.classe}
-          </Text>
-        </View>
-        {chantier.tonnageAccepte > 0 && (
-          <View style={styles.progressMini}>
-            <View style={[styles.progressBarMini, { backgroundColor: colors.border }]}>
-              <View style={[styles.progressFillMini, {
-                width: `${pct}%` as any,
-                backgroundColor: pct >= 90 ? colors.error : colors.primary
-              }]} />
-            </View>
-            <Text style={[styles.pctText, { color: pct >= 90 ? colors.error : colors.primary }]}>{pct}%</Text>
-          </View>
-        )}
-        <IconSymbol name="chevron.right" size={16} color={colors.muted} />
-      </View>
-    </TouchableOpacity>
-  );
-}
+const STATUT_LABELS: Record<string, string> = {
+  demande: 'Demande', analyse: 'Analyse', offre_envoyee: 'Offre envoyée',
+  documents_demandes: 'Documents', validation_admin: 'Validation admin',
+  autorise: 'Autorisé', en_cours: 'En cours', volume_atteint: 'Volume atteint',
+  cloture: 'Clôturé', refuse: 'Refusé',
+};
 
 export default function ChantiersScreen() {
+  const { isAuthenticated, isGestionnaire } = useAuthContext();
   const colors = useColors();
-  const router = useRouter();
-  const { chantiers } = useApp();
-  const [filtre, setFiltre] = useState<ChantierStatut | 'tous'>('tous');
-  const [recherche, setRecherche] = useState('');
+  const [search, setSearch] = useState('');
+  const [filtreStatut, setFiltreStatut] = useState('tous');
 
-  const chantiersFiltres = useMemo(() => {
-    return chantiers.filter(c => {
-      const matchFiltre = filtre === 'tous' || c.statut === filtre;
-      const matchRecherche = !recherche ||
-        c.societe.nom.toLowerCase().includes(recherche.toLowerCase()) ||
-        c.localisationChantier.toLowerCase().includes(recherche.toLowerCase()) ||
-        (c.referenceWalterre || '').toLowerCase().includes(recherche.toLowerCase());
-      return matchFiltre && matchRecherche;
-    });
-  }, [chantiers, filtre, recherche]);
+  const chantiersQuery = trpc.chantiers.list.useQuery(undefined, { enabled: isAuthenticated });
+  const chantiers = chantiersQuery.data ?? [];
+
+  const filtered = chantiers.filter(c => {
+    const matchSearch = !search ||
+      c.societeNom.toLowerCase().includes(search.toLowerCase()) ||
+      (c.localisationChantier || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.referenceWalterre || '').toLowerCase().includes(search.toLowerCase());
+    const matchStatut = filtreStatut === 'tous' || c.statut === filtreStatut;
+    return matchSearch && matchStatut;
+  });
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      {/* En-tête */}
+    <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.titre, { color: colors.foreground }]}>Chantiers</Text>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push('/chantier/nouveau' as any)}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="plus" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Barre de recherche */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
-        <TextInput
-          style={[styles.searchInput, { color: colors.foreground }]}
-          placeholder="Rechercher un chantier..."
-          placeholderTextColor={colors.muted}
-          value={recherche}
-          onChangeText={setRecherche}
-          returnKeyType="search"
-        />
-        {recherche.length > 0 && (
-          <TouchableOpacity onPress={() => setRecherche('')}>
-            <IconSymbol name="xmark" size={16} color={colors.muted} />
-          </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.foreground }]}>Dossiers chantiers</Text>
+        {isGestionnaire && (
+          <Pressable
+            onPress={() => router.push('/chantier/nouveau' as any)}
+            style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={styles.addBtnText}>+ Nouveau</Text>
+          </Pressable>
         )}
       </View>
 
-      {/* Filtres */}
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={{ color: colors.muted }}>🔍</Text>
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Rechercher société, localisation, référence..."
+          placeholderTextColor={colors.muted}
+          style={[styles.searchInput, { color: colors.foreground }]}
+        />
+      </View>
+
       <FlatList
-        data={FILTRES}
+        data={STATUTS}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filtresContainer}
-        keyExtractor={item => item.valeur}
+        keyExtractor={item => item.key}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <Pressable
+            onPress={() => setFiltreStatut(item.key)}
             style={[
-              styles.filtreBtn,
-              { borderColor: colors.border, backgroundColor: colors.surface },
-              filtre === item.valeur && { backgroundColor: colors.primary, borderColor: colors.primary },
+              styles.filtreChip,
+              {
+                backgroundColor: filtreStatut === item.key ? colors.primary : colors.surface,
+                borderColor: filtreStatut === item.key ? colors.primary : colors.border,
+              },
             ]}
-            onPress={() => setFiltre(item.valeur)}
-            activeOpacity={0.75}
           >
-            <Text style={[
-              styles.filtreText,
-              { color: colors.muted },
-              filtre === item.valeur && { color: '#fff' },
-            ]}>
+            <Text style={[styles.filtreText, { color: filtreStatut === item.key ? '#fff' : colors.muted }]}>
               {item.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       />
 
-      {/* Liste */}
-      <FlatList
-        data={chantiersFiltres}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.liste}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <ChantierItem
-            chantier={item}
-            onPress={() => router.push(`/chantier/${item.id}` as any)}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <IconSymbol name="folder.fill" size={40} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>
-              {recherche ? 'Aucun résultat' : 'Aucun chantier'}
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/chantier/nouveau' as any)}
-            >
-              <Text style={styles.emptyBtnText}>Nouveau chantier</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
+      {chantiersQuery.isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={{ fontSize: 40 }}>📋</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>
+                {search || filtreStatut !== 'tous' ? 'Aucun résultat' : 'Aucun dossier'}
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const volumeRef = Number(item.volumeDeclare) || Number(item.volumeEstime);
+            const tonnage = Number(item.tonnageAccepte) || 0;
+            const pct = volumeRef > 0 ? Math.min(100, (tonnage / volumeRef) * 100) : 0;
+            const couleur = STATUT_COLORS[item.statut] || '#6B7280';
+            return (
+              <Pressable
+                onPress={() => router.push(('/chantier/' + item.id) as any)}
+                style={({ pressed }) => [
+                  styles.card,
+                  { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+                ]}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardNom, { color: colors.foreground }]} numberOfLines={1}>
+                      {item.societeNom}
+                    </Text>
+                    <Text style={[styles.cardLoc, { color: colors.muted }]} numberOfLines={1}>
+                      {item.localisationChantier}
+                    </Text>
+                  </View>
+                  <View style={[styles.statutBadge, { backgroundColor: couleur + '20' }]}>
+                    <Text style={[styles.statutText, { color: couleur }]}>
+                      {STATUT_LABELS[item.statut] || item.statut}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cardMeta}>
+                  <Text style={[styles.metaText, { color: colors.muted }]}>
+                    Classe {item.classe} · {Number(item.volumeEstime).toFixed(0)} T estimé
+                  </Text>
+                  {item.referenceWalterre && (
+                    <Text style={[styles.metaText, { color: colors.muted }]}>
+                      Réf. {item.referenceWalterre}
+                    </Text>
+                  )}
+                </View>
+                {['en_cours', 'autorise', 'volume_atteint'].includes(item.statut) && (
+                  <View style={styles.progressRow}>
+                    <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                      <View style={[styles.progressFill, {
+                        width: (pct + '%') as any,
+                        backgroundColor: pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#10B981',
+                      }]} />
+                    </View>
+                    <Text style={[styles.progressText, { color: colors.muted }]}>
+                      {tonnage.toFixed(0)}T / {volumeRef.toFixed(0)}T
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.cardFooter}>
+                  <Text style={[styles.footerText, { color: colors.muted }]}>
+                    {item.periodeDebut} → {item.periodeFin}
+                  </Text>
+                  {item.prixTonne && (
+                    <Text style={[styles.footerText, { color: colors.primary, fontWeight: '600' }]}>
+                      {Number(item.prixTonne).toFixed(2)} €/T
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+      )}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5,
-  },
-  titre: { fontSize: 22, fontWeight: '700' },
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  searchContainer: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1,
-  },
-  searchInput: { flex: 1, fontSize: 14, padding: 0 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5 },
+  title: { fontSize: 22, fontWeight: '700' },
+  addBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  addBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  searchInput: { flex: 1, fontSize: 14 },
   filtresContainer: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filtreBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  filtreChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   filtreText: { fontSize: 13, fontWeight: '500' },
-  liste: { padding: 16, paddingTop: 4, gap: 10 },
-  item: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  itemLeft: { flex: 1, gap: 3 },
-  itemNom: { fontSize: 14, fontWeight: '600' },
-  itemLoc: { fontSize: 12 },
-  statutBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 12 },
+  emptyText: { fontSize: 16 },
+  listContent: { padding: 16, gap: 10, paddingBottom: 32 },
+  card: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 8 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  cardNom: { fontSize: 15, fontWeight: '600' },
+  cardLoc: { fontSize: 13, marginTop: 2 },
+  statutBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   statutText: { fontSize: 11, fontWeight: '600' },
-  itemFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  itemMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  itemMetaText: { fontSize: 12 },
-  progressMini: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  progressBarMini: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
-  progressFillMini: { height: '100%', borderRadius: 2 },
-  pctText: { fontSize: 11, fontWeight: '600', minWidth: 28 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 15 },
-  emptyBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, marginTop: 4 },
-  emptyBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  cardMeta: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaText: { fontSize: 12 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progressBar: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  progressText: { fontSize: 11, minWidth: 80, textAlign: 'right' },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  footerText: { fontSize: 12 },
 });

@@ -1,28 +1,236 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import * as db from "./db";
+import {
+  emailAutorisation,
+  emailOffrePrix,
+  emailRefusClasse,
+  emailRefusValidation,
+  emailVolumeAtteint,
+  sendEmail,
+} from "./email";
+
+const phoneBeRegex = /^(\+32|0)[1-9][0-9]{7,8}$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const societeSchema = z.object({
+  societeNom: z.string().min(1, "Nom société requis"),
+  societeAdresse: z.string().min(1, "Adresse requise"),
+  societeTva: z.string().min(1, "TVA requise"),
+  societeMail: z.string().regex(emailRegex, "Email invalide"),
+  societeContact: z.string().min(1, "Contact requis"),
+  societeTelephone: z.string().regex(phoneBeRegex, "Téléphone belge invalide"),
+});
+
+const chantierBaseSchema = societeSchema.extend({
+  localisationChantier: z.string().min(1, "Localisation requise"),
+  contactChantier: z.string().min(1, "Contact chantier requis"),
+  telephoneChantier: z.string().regex(phoneBeRegex, "Téléphone belge invalide"),
+  volumeEstime: z.number().positive("Volume doit être positif"),
+  classe: z.number().int().min(1).max(5),
+  periodeDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+  periodeFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+  notes: z.string().optional(),
+});
+
+const gestionnaireOnly = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.appRole !== "gestionnaire" && ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
+  }
+  return next({ ctx });
+});
 
 export const appRouter = router({
-  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  users: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return db.getAllUsers();
+    }),
+    updateRole: protectedProcedure
+      .input(z.object({ userId: z.number(), appRole: z.enum(["gestionnaire", "prepose"]) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.updateUserAppRole(input.userId, input.appRole);
+        return { success: true };
+      }),
+  }),
+
+  chantiers: router({
+    list: protectedProcedure.query(() => db.getAllChantiers()),
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const c = await db.getChantierById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        return c;
+      }),
+    create: gestionnaireOnly
+      .input(chantierBaseSchema)
+      .mutation(async ({ ctx, input }) => {
+        if (input.classe > 2) {
+          const id = await db.createChantier({ ...input, statut: "refuse", createdByUserId: ctx.user.id });
+          await sendEmail(emailRefusClasse(input.societeNom, input.societeMail, input.classe));
+          return { id, refused: true, reason: "classe_incompatible" };
+        }
+        const id = await db.createChantier({ ...input, statut: "demande", createdByUserId: ctx.user.id });
+        return { id, refused: false };
+      }),
+    update: gestionnaireOnly
+      .input(z.object({ id: z.number(), data: chantierBaseSchema.partial() }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, input.data);
+        return { success: true };
+      }),
+    envoyerOffre: gestionnaireOnly
+      .input(z.object({ id: z.number(), prixTonne: z.number().positive(), conditionsAcceptation: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        await db.updateChantier(input.id, { prixTonne: input.prixTonne.toString(), conditionsAcceptation: input.conditionsAcceptation, statut: "offre_envoyee" });
+        await sendEmail(emailOffrePrix(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
+        return { success: true };
+      }),
+    confirmerAccordClient: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, { confirmationClient: true, dateConfirmation: new Date().toISOString().split("T")[0], statut: "documents_demandes" });
+        return { success: true };
+      }),
+    saisirDocuments: gestionnaireOnly
+      .input(z.object({ id: z.number(), referenceWalterre: z.string().min(1), certificatQualite: z.boolean(), rapportAnalyse: z.boolean(), volumeDeclare: z.number().positive(), regimeApplicable: z.string().min(1), transporteurs: z.array(z.string()).min(1) }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, { referenceWalterre: input.referenceWalterre, certificatQualite: input.certificatQualite, rapportAnalyse: input.rapportAnalyse, volumeDeclare: input.volumeDeclare, regimeApplicable: input.regimeApplicable, transporteurs: JSON.stringify(input.transporteurs), statut: "validation_admin" });
+        return { success: true };
+      }),
+    validerAdmin: gestionnaireOnly
+      .input(z.object({ id: z.number(), validationClasse: z.boolean(), validationCertificat: z.boolean(), validationRapport: z.boolean(), validationRegime: z.boolean(), validationVolume: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, { validationClasse: input.validationClasse, validationCertificat: input.validationCertificat, validationRapport: input.validationRapport, validationRegime: input.validationRegime, validationVolume: input.validationVolume });
+        return { success: true };
+      }),
+    autoriser: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        await db.updateChantier(input.id, { statut: "autorise", dateAutorisation: new Date().toISOString().split("T")[0] });
+        if (chantier.referenceWalterre) {
+          await sendEmail(emailAutorisation(chantier.societeNom, chantier.societeMail, chantier.referenceWalterre, "Site de Transinne"));
+        }
+        return { success: true };
+      }),
+    refuserAdmin: gestionnaireOnly
+      .input(z.object({ id: z.number(), motif: z.string().min(10, "Motif requis (min 10 caractères)") }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        await db.updateChantier(input.id, { statut: "refuse", motifRefusAdmin: input.motif, dateRefus: new Date().toISOString().split("T")[0] });
+        await sendEmail(emailRefusValidation(chantier.societeNom, chantier.societeMail, input.motif));
+        return { success: true };
+      }),
+    cloturer: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, { statut: "cloture" });
+        return { success: true };
+      }),
+  }),
+
+  passages: router({
+    list: protectedProcedure.query(() => db.getAllPassages()),
+    listByDate: protectedProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getPassagesByDate(input.date)),
+    listByChantier: protectedProcedure.input(z.object({ chantierId: z.number() })).query(({ input }) => db.getPassagesByChantier(input.chantierId)),
+    listByPeriod: protectedProcedure.input(z.object({ dateDebut: z.string(), dateFin: z.string() })).query(({ input }) => db.getPassagesByPeriod(input.dateDebut, input.dateFin)),
+    create: protectedProcedure
+      .input(z.object({
+        chantierId: z.number(), chantierNom: z.string(), date: z.string(), heure: z.string(),
+        plaque: z.string().min(1), transporteur: z.string().min(1), referenceChantier: z.string().min(1),
+        tonnage: z.number().positive(), accepte: z.boolean(),
+        motifRefus: z.string().optional(), motifRefusDetail: z.string().optional(), photoUrl: z.string().optional(),
+        bonWalterreOk: z.boolean().optional(), referenceOk: z.boolean().optional(), plaqueOk: z.boolean().optional(), correspondanceOk: z.boolean().optional(),
+        controleVisuelOk: z.boolean().optional(), anomalies: z.array(z.string()).optional(), operateurNom: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const chantier = await db.getChantierById(input.chantierId);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND", message: "Chantier introuvable" });
+        const statutsAutorisés = ["autorise", "en_cours", "volume_atteint"] as const;
+        if (!statutsAutorisés.includes(chantier.statut as any)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Ce chantier n'est pas autorisé à recevoir des livraisons" });
+        }
+        if ((chantier.statut as string) === "volume_atteint") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Volume déclaré atteint — aucun nouveau camion accepté" });
+        }
+        if (input.accepte) {
+          const volumeRef = Number(chantier.volumeDeclare) || Number(chantier.volumeEstime);
+          const tonnageActuel = Number(chantier.tonnageAccepte) || 0;
+          const volumeRestant = volumeRef - tonnageActuel;
+          if (volumeRestant > 0 && input.tonnage > volumeRestant) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: `Tonnage dépasse le volume restant autorisé (${volumeRestant.toFixed(2)} T restants)` });
+          }
+        }
+        const id = await db.createPassage({ ...input, anomalies: input.anomalies ? JSON.stringify(input.anomalies) : null, operateurId: ctx.user.id, operateurNom: input.operateurNom || ctx.user.name || "Inconnu" });
+        const chantierMaj = await db.getChantierById(input.chantierId);
+        if (chantierMaj?.statut === "volume_atteint") {
+          await sendEmail(emailVolumeAtteint(chantierMaj.societeNom, chantierMaj.societeMail, chantierMaj.referenceWalterre || "N/A", Number(chantierMaj.tonnageAccepte)));
+        }
+        return { id };
+      }),
+  }),
+
+  incidents: router({
+    list: protectedProcedure.query(() => db.getAllIncidents()),
+    get: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const inc = await db.getIncidentById(input.id);
+      if (!inc) throw new TRPCError({ code: "NOT_FOUND" });
+      return inc;
+    }),
+    create: protectedProcedure
+      .input(z.object({ type: z.enum(["camion_refuse", "suspicion_post_deversement", "autre"]), chantierId: z.number(), chantierNom: z.string(), passageId: z.number().optional(), date: z.string(), description: z.string().min(1), photoUrl: z.string().optional(), zoneIsolee: z.boolean().optional(), clientInforme: z.boolean().optional(), notes: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.createIncident({ ...input, statut: "ouvert", historiqueActions: JSON.stringify([{ date: new Date().toISOString(), action: "Incident créé", par: ctx.user.name || "Inconnu" }]), createdByUserId: ctx.user.id });
+        return { id };
+      }),
+    updateStatut: protectedProcedure
+      .input(z.object({ id: z.number(), statut: z.enum(["ouvert", "en_cours", "resolu"]), notes: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const incident = await db.getIncidentById(input.id);
+        if (!incident) throw new TRPCError({ code: "NOT_FOUND" });
+        const historique = incident.historiqueActions ? JSON.parse(incident.historiqueActions) : [];
+        historique.push({ date: new Date().toISOString(), action: `Statut → ${input.statut}`, par: ctx.user.name || "Inconnu", notes: input.notes });
+        const updates: Record<string, unknown> = { statut: input.statut, historiqueActions: JSON.stringify(historique) };
+        if (input.statut === "resolu") { updates.dateResolution = new Date().toISOString().split("T")[0]; updates.resoluParUserId = ctx.user.id; updates.resoluParNom = ctx.user.name || "Inconnu"; updates.notesResolution = input.notes; }
+        await db.updateIncident(input.id, updates as any);
+        return { success: true };
+      }),
+  }),
+
+  stats: router({
+    jour: protectedProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getStatsJour(input.date)),
+    facturation: gestionnaireOnly
+      .input(z.object({ chantierId: z.number(), dateDebut: z.string(), dateFin: z.string() }))
+      .query(async ({ input }) => {
+        const [chantier, passagesData] = await Promise.all([db.getChantierById(input.chantierId), db.getFacturationChantier(input.chantierId, input.dateDebut, input.dateFin)]);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        const totalTonnage = passagesData.reduce((s, p) => s + p.tonnage, 0);
+        const prixTonne = Number(chantier.prixTonne) || 0;
+        return { chantier, passages: passagesData, totalTonnage, prixTonne, montantTotal: totalTonnage * prixTonne };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

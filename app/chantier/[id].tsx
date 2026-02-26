@@ -1,340 +1,379 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useAuthContext } from '@/lib/auth-context';
+import { trpc } from '@/lib/trpc';
+import { useColors } from '@/hooks/use-colors';
 
-import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
-import { useColors } from "@/hooks/use-colors";
-import { STATUT_LABELS, STATUT_COLORS, ChantierStatut } from "@/types";
+const STATUT_LABELS: Record<string, string> = {
+  demande: 'Demande reçue', analyse: 'En analyse', offre_envoyee: 'Offre envoyée',
+  documents_demandes: 'Documents demandés', validation_admin: 'Validation administrative',
+  autorise: 'Autorisé', en_cours: 'En cours', volume_atteint: 'Volume atteint',
+  cloture: 'Clôturé', refuse: 'Refusé',
+};
+const STATUT_COLORS: Record<string, string> = {
+  demande: '#6B7280', analyse: '#F59E0B', offre_envoyee: '#3B82F6',
+  documents_demandes: '#8B5CF6', validation_admin: '#F97316',
+  autorise: '#10B981', en_cours: '#059669', volume_atteint: '#EF4444',
+  cloture: '#6B7280', refuse: '#DC2626',
+};
+const WORKFLOW = [
+  { key: 'demande', label: 'Demande' }, { key: 'analyse', label: 'Analyse' },
+  { key: 'offre_envoyee', label: 'Offre' }, { key: 'documents_demandes', label: 'Documents' },
+  { key: 'validation_admin', label: 'Validation' }, { key: 'autorise', label: 'Autorisé' },
+  { key: 'en_cours', label: 'En cours' }, { key: 'cloture', label: 'Clôturé' },
+];
 
-function InfoRow({ label, value, icon }: { label: string; value?: string | null; icon?: any }) {
-  const colors = useColors();
-  if (!value) return null;
+function InfoRow({ label, value, colors }: { label: string; value: string; colors: any }) {
   return (
     <View style={styles.infoRow}>
-      {icon && <IconSymbol name={icon} size={14} color={colors.muted} />}
-      <View style={styles.infoContent}>
-        <Text style={[styles.infoLabel, { color: colors.muted }]}>{label}</Text>
-        <Text style={[styles.infoValue, { color: colors.foreground }]}>{value}</Text>
-      </View>
+      <Text style={[styles.infoLabel, { color: colors.muted }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: colors.foreground }]}>{value}</Text>
     </View>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const colors = useColors();
+function ActionBtn({ label, color, onPress, loading }: { label: string; color: string; onPress: () => void; loading?: boolean }) {
   return (
-    <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text>
-      {children}
-    </View>
+    <Pressable onPress={onPress} disabled={loading}
+      style={({ pressed }) => [styles.actionBtn, { backgroundColor: color + '20', borderColor: color + '60', opacity: pressed || loading ? 0.7 : 1 }]}>
+      {loading ? <ActivityIndicator size="small" color={color} /> : <Text style={[styles.actionBtnText, { color }]}>{label}</Text>}
+    </Pressable>
   );
 }
 
-function CheckItem({ label, checked }: { label: string; checked?: boolean }) {
-  const colors = useColors();
-  return (
-    <View style={styles.checkItem}>
-      <IconSymbol
-        name={checked ? "checkmark.circle.fill" : "xmark.circle.fill"}
-        size={18}
-        color={checked ? colors.success : colors.error}
-      />
-      <Text style={[styles.checkLabel, { color: colors.foreground }]}>{label}</Text>
-    </View>
-  );
-}
-
-export default function ChantierDetail() {
+export default function ChantierDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isGestionnaire } = useAuthContext();
   const colors = useColors();
-  const router = useRouter();
-  const { chantiers, passages, modifierChantier } = useApp();
+  const utils = trpc.useUtils();
 
-  const chantier = useMemo(() => chantiers.find(c => c.id === id), [chantiers, id]);
-  const passagesChantier = useMemo(() => passages.filter(p => p.chantierId === id), [passages, id]);
+  const chantierQuery = trpc.chantiers.get.useQuery({ id: Number(id) });
+  const passagesQuery = trpc.passages.listByChantier.useQuery({ chantierId: Number(id) });
 
-  if (!chantier) {
+  const updateMutation = trpc.chantiers.update.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+  const envoyerOffreMutation = trpc.chantiers.envoyerOffre.useMutation({
+    onSuccess: () => {
+      utils.chantiers.get.invalidate({ id: Number(id) });
+      Alert.alert('Succès', "L'offre de prix a été envoyée par email au client.");
+      setShowOffreModal(false); setPrixTonne(''); setConditions('');
+    },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+  const autoriserMutation = trpc.chantiers.autoriser.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); setShowAutoriserModal(false); },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+  const refuserMutation = trpc.chantiers.refuserAdmin.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); setShowRefusModal(false); setMotifRefus(''); },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+  const cloturerMutation = trpc.chantiers.cloturer.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+  const confirmerAccordMutation = trpc.chantiers.confirmerAccordClient.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+
+  const [showOffreModal, setShowOffreModal] = useState(false);
+  const [prixTonne, setPrixTonne] = useState('');
+  const [conditions, setConditions] = useState('');
+  const [showRefusModal, setShowRefusModal] = useState(false);
+  const [motifRefus, setMotifRefus] = useState('');
+  const [showAutoriserModal, setShowAutoriserModal] = useState(false);
+
+  if (chantierQuery.isLoading) {
+    return <ScreenContainer><View style={styles.center}><ActivityIndicator size="large" color="#2563EB" /></View></ScreenContainer>;
+  }
+  const c = chantierQuery.data;
+  if (!c) {
     return (
       <ScreenContainer>
         <View style={styles.center}>
-          <Text style={{ color: colors.muted }}>Chantier introuvable</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={{ color: colors.primary, marginTop: 12 }}>Retour</Text>
-          </TouchableOpacity>
+          <Text style={{ color: '#6B7280' }}>Dossier introuvable</Text>
+          <Pressable onPress={() => router.back()} style={[styles.btn, { backgroundColor: '#2563EB' }]}>
+            <Text style={styles.btnText}>Retour</Text>
+          </Pressable>
         </View>
       </ScreenContainer>
     );
   }
 
-  const statutColor = STATUT_COLORS[chantier.statut] || colors.muted;
-  const volumeRef = chantier.volumeDeclare || chantier.volumeEstime;
-  const pct = volumeRef ? Math.min(100, Math.round((chantier.tonnageAccepte / volumeRef) * 100)) : 0;
+  const statutColor = STATUT_COLORS[c.statut] || '#6B7280';
+  const volumeRef = Number(c.volumeDeclare) || Number(c.volumeEstime);
+  const tonnage = Number(c.tonnageAccepte) || 0;
+  const pct = volumeRef > 0 ? Math.min(100, (tonnage / volumeRef) * 100) : 0;
+  const passages = passagesQuery.data ?? [];
+  const currentStep = WORKFLOW.findIndex(s => s.key === c.statut);
 
-  const handleCloture = () => {
-    Alert.alert(
-      'Clôturer le chantier',
-      'Êtes-vous sûr de vouloir clôturer ce chantier ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Clôturer',
-          style: 'destructive',
-          onPress: () => modifierChantier(chantier.id, { statut: 'cloture' }),
-        },
-      ]
-    );
-  };
-
-  const handleAutoriser = () => {
-    Alert.alert(
-      'Autoriser le chantier',
-      'Confirmer l\'autorisation de livraison au site de Transinne ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Autoriser',
-          onPress: () => modifierChantier(chantier.id, {
-            statut: 'autorise',
-            dateAutorisation: new Date().toISOString(),
-          }),
-        },
-      ]
-    );
-  };
-
-  const dernierPassages = passagesChantier.slice(0, 5);
+  function handleSendOffre() {
+    if (!prixTonne.trim() || isNaN(Number(prixTonne)) || Number(prixTonne) <= 0) {
+      Alert.alert('Erreur', 'Veuillez saisir un prix à la tonne valide.'); return;
+    }
+    if (!conditions.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir les conditions d\'acceptation.'); return;
+    }
+    envoyerOffreMutation.mutate({ id: Number(id), prixTonne: Number(prixTonne), conditionsAcceptation: conditions.trim() });
+  }
+  function handleRefuser() {
+    if (!motifRefus.trim() || motifRefus.trim().length < 10) {
+      Alert.alert('Motif requis', 'Veuillez indiquer le motif du refus (minimum 10 caractères).'); return;
+    }
+    refuserMutation.mutate({ id: Number(id), motif: motifRefus.trim() });
+  }
+  function handleAutoriser() {
+    Alert.alert('Confirmer', 'Autoriser définitivement ce chantier ? Un email sera envoyé au client.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Autoriser', onPress: () => autoriserMutation.mutate({ id: Number(id) }) },
+    ]);
+  }
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      {/* En-tête */}
+    <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol name="chevron.left" size={22} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
-          Détail chantier
-        </Text>
-        <View style={[styles.statutBadge, { backgroundColor: statutColor + '20' }]}>
-          <Text style={[styles.statutText, { color: statutColor }]}>
-            {STATUT_LABELS[chantier.statut]}
-          </Text>
-        </View>
+        <Pressable onPress={() => router.back()}>
+          <Text style={[styles.backText, { color: colors.primary }]}>‹ Retour</Text>
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{c.societeNom}</Text>
+        <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Statut */}
+        <View style={[styles.statutCard, { backgroundColor: statutColor + '15', borderColor: statutColor + '40' }]}>
+          <Text style={[styles.statutLabel, { color: statutColor }]}>{STATUT_LABELS[c.statut] || c.statut}</Text>
+          {c.statut === 'refuse' && c.motifRefusAdmin ? (
+            <Text style={[styles.statutMotif, { color: colors.muted }]}>Motif : {c.motifRefusAdmin}</Text>
+          ) : null}
+        </View>
+
+        {/* Workflow */}
+        {c.statut !== 'refuse' ? (
+          <View style={styles.workflowRow}>
+            {WORKFLOW.map((step, idx) => {
+              const done = idx < currentStep; const active = idx === currentStep;
+              return (
+                <View key={step.key} style={styles.workflowStep}>
+                  <View style={[styles.workflowDot, {
+                    backgroundColor: done ? '#10B981' : active ? colors.primary : colors.border,
+                    borderColor: done ? '#10B981' : active ? colors.primary : colors.border,
+                  }]}>
+                    {done ? <Text style={{ color: '#fff', fontSize: 8 }}>✓</Text> : null}
+                  </View>
+                  <Text style={[styles.workflowLabel, { color: active ? colors.primary : colors.muted }]} numberOfLines={1}>{step.label}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Tonnage */}
+        {['en_cours', 'autorise', 'volume_atteint'].includes(c.statut) ? (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Suivi tonnage</Text>
+            <View style={styles.progressRow}>
+              <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                <View style={[styles.progressFill, { width: (pct + '%') as any, backgroundColor: pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#10B981' }]} />
+              </View>
+              <Text style={[styles.progressText, { color: colors.muted }]}>{pct.toFixed(0)}%</Text>
+            </View>
+            <View style={styles.tonnageRow}>
+              <Text style={[styles.tonnageVal, { color: colors.foreground }]}>{tonnage.toFixed(1)} T accepté</Text>
+              <Text style={[styles.tonnageRef, { color: colors.muted }]}>/ {volumeRef.toFixed(0)} T autorisé</Text>
+            </View>
+            {c.statut === 'volume_atteint' ? (
+              <View style={styles.alertBox}><Text style={styles.alertText}>🚫 Volume atteint — aucun nouveau camion accepté</Text></View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Société */}
-        <Section title="Société cliente">
-          <InfoRow label="Nom" value={chantier.societe.nom} icon="building.2.fill" />
-          <InfoRow label="Adresse" value={chantier.societe.adresse} icon="location.fill" />
-          <InfoRow label="TVA" value={chantier.societe.tva} />
-          <InfoRow label="Contact" value={chantier.societe.personneContact} icon="person.fill" />
-          <InfoRow label="Téléphone" value={chantier.societe.telephone} icon="phone.fill" />
-          <InfoRow label="E-mail" value={chantier.societe.mail} icon="envelope.fill" />
-        </Section>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Société cliente</Text>
+          <InfoRow label="Société" value={c.societeNom} colors={colors} />
+          <InfoRow label="Adresse" value={c.societeAdresse || '-'} colors={colors} />
+          <InfoRow label="TVA" value={c.societeTva || '-'} colors={colors} />
+          <InfoRow label="Email" value={c.societeMail || '-'} colors={colors} />
+          <InfoRow label="Contact" value={c.societeContact || '-'} colors={colors} />
+          <InfoRow label="Téléphone" value={c.societeTelephone || '-'} colors={colors} />
+        </View>
 
         {/* Chantier */}
-        <Section title="Informations chantier">
-          <InfoRow label="Localisation" value={chantier.localisationChantier} icon="location.fill" />
-          <InfoRow label="Contact chantier" value={chantier.contactChantier} icon="person.fill" />
-          <InfoRow label="Téléphone chantier" value={chantier.telephoneChantier} icon="phone.fill" />
-          <InfoRow label="Classe" value={`Classe ${chantier.classe}`} />
-          <InfoRow label="Volume estimé" value={`${chantier.volumeEstime} T`} icon="scalemass.fill" />
-          <InfoRow label="Période" value={`${chantier.periodeDebut} → ${chantier.periodeFin}`} icon="calendar" />
-        </Section>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Chantier</Text>
+          <InfoRow label="Localisation" value={c.localisationChantier || '-'} colors={colors} />
+          <InfoRow label="Contact site" value={c.contactChantier || '-'} colors={colors} />
+          <InfoRow label="Tél. site" value={c.telephoneChantier || '-'} colors={colors} />
+          <InfoRow label="Classe" value={`Classe ${c.classe}`} colors={colors} />
+          <InfoRow label="Volume estimé" value={`${Number(c.volumeEstime).toFixed(0)} T`} colors={colors} />
+          {c.volumeDeclare ? <InfoRow label="Volume déclaré" value={`${Number(c.volumeDeclare).toFixed(0)} T`} colors={colors} /> : null}
+          {c.referenceWalterre ? <InfoRow label="Réf. Walterre" value={c.referenceWalterre} colors={colors} /> : null}
+          <InfoRow label="Période" value={`${c.periodeDebut} → ${c.periodeFin}`} colors={colors} />
+          {c.prixTonne ? <InfoRow label="Prix à la tonne" value={`${Number(c.prixTonne).toFixed(2)} €/T`} colors={colors} /> : null}
+        </View>
 
-        {/* Tonnages */}
-        <Section title="Suivi des tonnages">
-          <View style={styles.tonnageRow}>
-            <View style={styles.tonnageItem}>
-              <Text style={[styles.tonnageValue, { color: colors.success }]}>
-                {chantier.tonnageAccepte.toFixed(1)} T
-              </Text>
-              <Text style={[styles.tonnageLabel, { color: colors.muted }]}>Accepté</Text>
-            </View>
-            <View style={styles.tonnageItem}>
-              <Text style={[styles.tonnageValue, { color: colors.error }]}>
-                {chantier.tonnageRefuse.toFixed(1)} T
-              </Text>
-              <Text style={[styles.tonnageLabel, { color: colors.muted }]}>Refusé</Text>
-            </View>
-            <View style={styles.tonnageItem}>
-              <Text style={[styles.tonnageValue, { color: colors.foreground }]}>
-                {volumeRef} T
-              </Text>
-              <Text style={[styles.tonnageLabel, { color: colors.muted }]}>Déclaré</Text>
-            </View>
+        {/* Actions gestionnaire */}
+        {isGestionnaire && c.statut !== 'refuse' && c.statut !== 'cloture' ? (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Actions</Text>
+
+            {c.statut === 'demande' ? (
+              <ActionBtn label="Passer en analyse" color="#F59E0B" loading={updateMutation.isPending}
+                onPress={() => Alert.alert('Confirmer', 'Passer ce dossier en analyse ?', [
+                  { text: 'Annuler', style: 'cancel' },
+                  { text: 'Confirmer', onPress: () => updateMutation.mutate({ id: Number(id), data: { statut: 'analyse' } as any }) },
+                ])} />
+            ) : null}
+
+            {c.statut === 'analyse' ? (
+              <ActionBtn label="Envoyer l'offre de prix" color="#3B82F6" onPress={() => setShowOffreModal(true)} loading={envoyerOffreMutation.isPending} />
+            ) : null}
+
+            {c.statut === 'offre_envoyee' ? (
+              <ActionBtn label="Confirmer accord client → Documents" color="#8B5CF6" loading={confirmerAccordMutation.isPending}
+                onPress={() => Alert.alert('Confirmer', 'Le client a accepté l\'offre ? Passer à la demande de documents Walterre ?', [
+                  { text: 'Annuler', style: 'cancel' },
+                  { text: 'Confirmer', onPress: () => confirmerAccordMutation.mutate({ id: Number(id) }) },
+                ])} />
+            ) : null}
+
+            {c.statut === 'documents_demandes' ? (
+              <ActionBtn label="Saisir les documents Walterre" color="#F97316"
+                onPress={() => router.push((`/chantier/documents/${id}`) as any)} />
+            ) : null}
+
+            {c.statut === 'validation_admin' ? (
+              <>
+                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={handleAutoriser} loading={autoriserMutation.isPending} />
+                <ActionBtn label="❌ Refuser le dossier" color="#EF4444" onPress={() => setShowRefusModal(true)} loading={refuserMutation.isPending} />
+              </>
+            ) : null}
+
+            {['autorise', 'en_cours', 'volume_atteint'].includes(c.statut) ? (
+              <ActionBtn label="Clôturer le chantier" color="#6B7280" loading={cloturerMutation.isPending}
+                onPress={() => Alert.alert('Clôturer', 'Confirmer la clôture définitive ?', [
+                  { text: 'Annuler', style: 'cancel' },
+                  { text: 'Clôturer', style: 'destructive', onPress: () => cloturerMutation.mutate({ id: Number(id) }) },
+                ])} />
+            ) : null}
           </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[styles.progressFill, {
-              width: `${pct}%` as any,
-              backgroundColor: pct >= 90 ? colors.error : colors.primary
-            }]} />
-          </View>
-          <Text style={[styles.pctText, { color: pct >= 90 ? colors.error : colors.primary }]}>
-            {pct}% du volume déclaré atteint
-          </Text>
-        </Section>
+        ) : null}
 
-        {/* Walterre */}
-        {chantier.referenceWalterre && (
-          <Section title="Documents Walterre">
-            <InfoRow label="Référence" value={chantier.referenceWalterre} />
-            <InfoRow label="Régime" value={chantier.regimeApplicable} />
-            <InfoRow label="Volume déclaré" value={chantier.volumeDeclare ? `${chantier.volumeDeclare} T` : undefined} />
-            <InfoRow label="Transporteurs" value={chantier.transporteurs?.join(', ')} />
-            <View style={styles.checkList}>
-              <CheckItem label="Certificat de qualité" checked={chantier.certificatQualite} />
-              <CheckItem label="Rapport d'analyse" checked={chantier.rapportAnalyse} />
-            </View>
-          </Section>
-        )}
-
-        {/* Validation admin */}
-        {(chantier.statut === 'validation_admin' || chantier.statut === 'autorise' || chantier.statut === 'en_cours') && (
-          <Section title="Validation administrative">
-            <View style={styles.checkList}>
-              <CheckItem label="Classe ≤ 2" checked={chantier.validationClasse} />
-              <CheckItem label="Certificat valide" checked={chantier.validationCertificat} />
-              <CheckItem label="Rapport cohérent" checked={chantier.validationRapport} />
-              <CheckItem label="Régime compatible" checked={chantier.validationRegime} />
-              <CheckItem label="Volume raisonnable" checked={chantier.validationVolume} />
-            </View>
-            {chantier.dateAutorisation && (
-              <Text style={[styles.autorisationDate, { color: colors.success }]}>
-                ✓ Autorisé le {new Date(chantier.dateAutorisation).toLocaleDateString('fr-BE')}
-              </Text>
-            )}
-          </Section>
-        )}
-
-        {/* Derniers passages */}
-        {dernierPassages.length > 0 && (
-          <Section title={`Derniers passages (${passagesChantier.length})`}>
-            {dernierPassages.map(p => (
-              <View key={p.id} style={[styles.passageRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.passageLeft}>
+        {/* Passages */}
+        {passages.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Derniers passages ({passages.length})</Text>
+            {passages.slice(0, 5).map((p: any) => (
+              <View key={p.id} style={[styles.passageRow, { borderTopColor: colors.border }]}>
+                <View>
                   <Text style={[styles.passagePlaque, { color: colors.foreground }]}>{p.plaque}</Text>
-                  <Text style={[styles.passageMeta, { color: colors.muted }]}>
-                    {p.date} {p.heure} — {p.tonnage} T
-                  </Text>
+                  <Text style={[styles.passageDate, { color: colors.muted }]}>{p.datePassage} {p.heureArrivee}</Text>
                 </View>
-                <View style={[styles.passageStatut, {
-                  backgroundColor: p.accepte ? colors.success + '20' : colors.error + '20'
-                }]}>
-                  <Text style={{ color: p.accepte ? colors.success : colors.error, fontSize: 12, fontWeight: '600' }}>
-                    {p.accepte ? 'Accepté' : 'Refusé'}
-                  </Text>
-                </View>
+                <Text style={[styles.passageTonnage, { color: p.accepte ? '#10B981' : '#EF4444' }]}>
+                  {p.accepte ? `+${Number(p.tonnage).toFixed(1)} T` : '✗ Refusé'}
+                </Text>
               </View>
             ))}
-          </Section>
-        )}
-
-        {/* Actions */}
-        <View style={styles.actions}>
-          {chantier.statut === 'validation_admin' && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.success }]}
-              onPress={handleAutoriser}
-              activeOpacity={0.8}
-            >
-              <IconSymbol name="checkmark.seal.fill" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Autoriser le chantier</Text>
-            </TouchableOpacity>
-          )}
-          {chantier.statut === 'autorise' && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/camion/nouveau' as any)}
-              activeOpacity={0.8}
-            >
-              <IconSymbol name="truck.box.fill" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Enregistrer un camion</Text>
-            </TouchableOpacity>
-          )}
-          {chantier.statut === 'documents_demandes' && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-              onPress={() => router.push(`/chantier/documents/${chantier.id}` as any)}
-              activeOpacity={0.8}
-            >
-              <IconSymbol name="doc.fill" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Saisir les documents</Text>
-            </TouchableOpacity>
-          )}
-          {(chantier.statut === 'en_cours' || chantier.statut === 'volume_atteint') && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.error }]}
-              onPress={handleCloture}
-              activeOpacity={0.8}
-            >
-              <IconSymbol name="lock.fill" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Clôturer le chantier</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.actionBtnOutline, { borderColor: colors.primary }]}
-            onPress={() => router.push(`/chantier/validation/${chantier.id}` as any)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="pencil" size={18} color={colors.primary} />
-            <Text style={[styles.actionBtnOutlineText, { color: colors.primary }]}>Modifier / Valider</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        ) : null}
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Modal offre */}
+      {showOffreModal ? (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Offre de prix</Text>
+            <Text style={[styles.modalDesc, { color: colors.muted }]}>Prix à la tonne (€) *</Text>
+            <TextInput value={prixTonne} onChangeText={setPrixTonne} placeholder="Ex: 12.50" keyboardType="numeric"
+              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
+            <Text style={[styles.modalDesc, { color: colors.muted, marginTop: 8 }]}>Conditions d'acceptation *</Text>
+            <TextInput value={conditions} onChangeText={setConditions} placeholder="Ex: Terres classe 1-2, bon Walterre obligatoire..." multiline
+              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 60, textAlignVertical: 'top' }]} />
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => setShowOffreModal(false)} style={[styles.modalBtn, { backgroundColor: colors.border }]}>
+                <Text style={{ color: colors.foreground, fontWeight: '600' }}>Annuler</Text>
+              </Pressable>
+              <Pressable onPress={handleSendOffre} disabled={envoyerOffreMutation.isPending}
+                style={[styles.modalBtn, { backgroundColor: '#3B82F6', opacity: envoyerOffreMutation.isPending ? 0.7 : 1 }]}>
+                {envoyerOffreMutation.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Envoyer</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Modal refus */}
+      {showRefusModal ? (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Refuser le dossier</Text>
+            <Text style={[styles.modalDesc, { color: colors.muted }]}>Motif du refus (min. 10 caractères). Un email sera envoyé au client.</Text>
+            <TextInput value={motifRefus} onChangeText={setMotifRefus} placeholder="Ex: Documents non conformes, délai dépassé..." multiline
+              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 80, textAlignVertical: 'top' }]} />
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => setShowRefusModal(false)} style={[styles.modalBtn, { backgroundColor: colors.border }]}>
+                <Text style={{ color: colors.foreground, fontWeight: '600' }}>Annuler</Text>
+              </Pressable>
+              <Pressable onPress={handleRefuser} disabled={refuserMutation.isPending}
+                style={[styles.modalBtn, { backgroundColor: '#EF4444', opacity: refuserMutation.isPending ? 0.7 : 1 }]}>
+                {refuserMutation.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Refuser</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5,
-  },
-  backBtn: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '600' },
-  statutBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statutText: { fontSize: 11, fontWeight: '600' },
-  scroll: { padding: 16, gap: 12 },
-  section: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  infoContent: { flex: 1 },
-  infoLabel: { fontSize: 11, marginBottom: 1 },
-  infoValue: { fontSize: 14 },
-  checkList: { gap: 8, marginTop: 4 },
-  checkItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkLabel: { fontSize: 14 },
-  tonnageRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
-  tonnageItem: { alignItems: 'center', gap: 4 },
-  tonnageValue: { fontSize: 20, fontWeight: '700' },
-  tonnageLabel: { fontSize: 11 },
-  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { height: '100%', borderRadius: 3 },
-  pctText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  autorisationDate: { fontSize: 13, fontWeight: '500', marginTop: 4 },
-  passageRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 8, borderBottomWidth: 0.5,
-  },
-  passageLeft: { gap: 2 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5 },
+  backText: { fontSize: 17 },
+  headerTitle: { fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
+  scrollContent: { padding: 16, gap: 12, paddingBottom: 32 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  btn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  btnText: { color: '#fff', fontWeight: '600' },
+  statutCard: { borderRadius: 14, padding: 14, borderWidth: 1, alignItems: 'center', gap: 4 },
+  statutLabel: { fontSize: 17, fontWeight: '700' },
+  statutMotif: { fontSize: 13 },
+  workflowRow: { flexDirection: 'row', gap: 4 },
+  workflowStep: { flex: 1, alignItems: 'center', gap: 4 },
+  workflowDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  workflowLabel: { fontSize: 8, textAlign: 'center' },
+  card: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 8 },
+  cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progressBar: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 4 },
+  progressText: { fontSize: 13, fontWeight: '600', minWidth: 36, textAlign: 'right' },
+  tonnageRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  tonnageVal: { fontSize: 20, fontWeight: '700' },
+  tonnageRef: { fontSize: 14 },
+  alertBox: { backgroundColor: '#FEF2F2', borderRadius: 8, padding: 10 },
+  alertText: { fontSize: 13, color: '#DC2626', fontWeight: '600' },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 4 },
+  infoLabel: { fontSize: 13, flex: 1 },
+  infoValue: { fontSize: 13, fontWeight: '500', flex: 2, textAlign: 'right' },
+  actionBtn: { borderRadius: 12, padding: 14, borderWidth: 1, alignItems: 'center', marginBottom: 4 },
+  actionBtnText: { fontSize: 15, fontWeight: '600' },
+  passageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: 0.5 },
   passagePlaque: { fontSize: 14, fontWeight: '600' },
-  passageMeta: { fontSize: 12 },
-  passageStatut: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  actions: { gap: 10, marginTop: 4 },
-  actionBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 12,
-  },
-  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  actionBtnOutline: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5,
-  },
-  actionBtnOutlineText: { fontSize: 15, fontWeight: '600' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  passageDate: { fontSize: 12 },
+  passageTonnage: { fontSize: 14, fontWeight: '700' },
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modal: { borderRadius: 20, padding: 24, width: '100%', gap: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
+  modalDesc: { fontSize: 14, lineHeight: 20 },
+  modalInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
+  modalBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
 });

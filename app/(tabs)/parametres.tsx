@@ -1,146 +1,103 @@
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Alert } from "react-native";
-import { useState } from "react";
-
-import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
-import { useColors } from "@/hooks/use-colors";
-import { RoleProfil } from "@/types";
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { ScreenContainer } from '@/components/screen-container';
+import { useAuthContext } from '@/lib/auth-context';
+import { trpc } from '@/lib/trpc';
+import { useColors } from '@/hooks/use-colors';
 
 export default function ParametresScreen() {
   const colors = useColors();
-  const { profil, setProfil } = useApp();
+  const { user, logout, isGestionnaire, isPrepose, isAdmin } = useAuthContext();
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: logout,
+    onError: () => Alert.alert('Erreur', 'Impossible de se déconnecter.'),
+  });
 
-  const [nom, setNom] = useState(profil.nom);
-  const [role, setRole] = useState<RoleProfil>(profil.role);
-  const [siteNom, setSiteNom] = useState(profil.siteNom);
-  const [saving, setSaving] = useState(false);
+  const userAny = user as any;
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await setProfil({ nom: nom.trim() || 'Utilisateur', role, siteNom: siteNom.trim() || 'Site de Transinne' });
-      Alert.alert('Enregistré', 'Vos paramètres ont été mis à jour.');
-    } catch {
-      Alert.alert('Erreur', 'Impossible de sauvegarder.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  function handleLogout() {
+    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Déconnecter', style: 'destructive', onPress: () => logoutMutation.mutate() },
+    ]);
+  }
 
   return (
-    <ScreenContainer containerClassName="bg-background">
+    <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.titre, { color: colors.foreground }]}>Paramètres</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Paramètres</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Profil */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Mon profil</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Profil utilisateur */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: colors.foreground }]}>Nom</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
-              value={nom}
-              onChangeText={setNom}
-              placeholder="Votre nom"
-              placeholderTextColor={colors.muted}
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: colors.foreground }]}>Nom du site</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
-              value={siteNom}
-              onChangeText={setSiteNom}
-              placeholder="Site de Transinne"
-              placeholderTextColor={colors.muted}
-            />
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Mon profil</Text>
+          <View style={styles.profileRow}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[styles.avatarText, { color: colors.primary }]}>
+                {(user?.name || 'U').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.foreground }]}>{user?.name || 'Utilisateur'}</Text>
+              <Text style={[styles.profileEmail, { color: colors.muted }]}>{user?.email || '-'}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: isGestionnaire ? '#3B82F620' : '#10B98120' }]}>
+                <Text style={[styles.roleBadgeText, { color: isGestionnaire ? '#3B82F6' : '#10B981' }]}>
+                  {isGestionnaire ? '👔 Gestionnaire' : isPrepose ? '🦺 Préposé' : '👤 ' + ((userAny?.appRole) || 'Aucun rôle')}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Rôle */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Mon rôle</Text>
+        {/* Accès selon le rôle */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.roleOption,
-              { borderColor: colors.border, backgroundColor: colors.background },
-              role === 'gestionnaire' && { borderColor: colors.primary, backgroundColor: colors.primary + '10' }
-            ]}
-            onPress={() => setRole('gestionnaire')}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.roleIcon, { backgroundColor: colors.primary + '20' }]}>
-              <IconSymbol name="chart.bar.fill" size={22} color={colors.primary} />
-            </View>
-            <View style={styles.roleInfo}>
-              <Text style={[styles.roleNom, { color: colors.foreground }]}>Gestionnaire</Text>
-              <Text style={[styles.roleDesc, { color: colors.muted }]}>
-                Gestion des dossiers, validation administrative, suivi des tonnages et facturation
-              </Text>
-            </View>
-            {role === 'gestionnaire' && (
-              <IconSymbol name="checkmark.circle.fill" size={22} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.roleOption,
-              { borderColor: colors.border, backgroundColor: colors.background },
-              role === 'prepose' && { borderColor: colors.primary, backgroundColor: colors.primary + '10' }
-            ]}
-            onPress={() => setRole('prepose')}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.roleIcon, { backgroundColor: colors.warning + '20' }]}>
-              <IconSymbol name="truck.box.fill" size={22} color={colors.warning} />
-            </View>
-            <View style={styles.roleInfo}>
-              <Text style={[styles.roleNom, { color: colors.foreground }]}>Préposé</Text>
-              <Text style={[styles.roleDesc, { color: colors.muted }]}>
-                Contrôle des camions sur site, enregistrement des arrivées et tenue du registre
-              </Text>
-            </View>
-            {role === 'prepose' && (
-              <IconSymbol name="checkmark.circle.fill" size={22} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Informations légales */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>À propos</Text>
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.muted }]}>Application</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>SiteVerseur</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.muted }]}>Version</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>1.0.0</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.muted }]}>Site verseur</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>Transinne</Text>
-          </View>
-          <View style={[styles.infoNote, { backgroundColor: colors.warning + '15', borderColor: colors.warning }]}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={14} color={colors.warning} />
-            <Text style={[styles.infoNoteText, { color: colors.warning }]}>
-              Rappel : aucun camion sans validation écrite. Registre tenu en temps réel. Refus assumé sans discussion.
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Accès autorisés</Text>
+          {isGestionnaire ? (
+            <>
+              <PermRow icon="✅" label="Tableau de bord complet" />
+              <PermRow icon="✅" label="Gestion des chantiers (création, validation, clôture)" />
+              <PermRow icon="✅" label="Envoi des offres de prix" />
+              <PermRow icon="✅" label="Validation administrative des dossiers" />
+              <PermRow icon="✅" label="Suivi des tonnages et facturation" />
+              <PermRow icon="✅" label="Gestion des incidents" />
+              <PermRow icon="✅" label="Registre complet" />
+            </>
+          ) : isPrepose ? (
+            <>
+              <PermRow icon="✅" label="Enregistrement des arrivées camion" />
+              <PermRow icon="✅" label="Contrôle administratif et visuel" />
+              <PermRow icon="✅" label="Registre du jour" />
+              <PermRow icon="✅" label="Signalement d'incidents" />
+              <PermRow icon="❌" label="Création/modification de chantiers" />
+              <PermRow icon="❌" label="Validation administrative" />
+              <PermRow icon="❌" label="Facturation" />
+            </>
+          ) : (
+            <Text style={[styles.noRoleText, { color: colors.muted }]}>
+              Aucun rôle attribué. Contactez votre administrateur pour obtenir un accès.
             </Text>
-          </View>
+          )}
         </View>
 
-        {/* Bouton sauvegarder */}
-        <TouchableOpacity
-          style={[styles.btnSave, { backgroundColor: saving ? colors.muted : colors.primary }]}
-          onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.8}
+        {/* Info rôle */}
+        <View style={[styles.infoBox, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}>
+          <Text style={[styles.infoText, { color: colors.primary }]}>
+            ℹ️ Le rôle est attribué par l'administrateur. Vous ne pouvez pas le modifier vous-même.
+          </Text>
+        </View>
+
+        {/* Déconnexion */}
+        <Pressable
+          onPress={handleLogout}
+          disabled={logoutMutation.isPending}
+          style={({ pressed }) => [styles.logoutBtn, { backgroundColor: '#EF444415', borderColor: '#EF4444', opacity: pressed ? 0.7 : 1 }]}
         >
-          <IconSymbol name="checkmark" size={18} color="#fff" />
-          <Text style={styles.btnSaveText}>{saving ? 'Enregistrement...' : 'Enregistrer'}</Text>
-        </TouchableOpacity>
+          {logoutMutation.isPending
+            ? <ActivityIndicator size="small" color="#EF4444" />
+            : <Text style={styles.logoutBtnText}>Se déconnecter</Text>
+          }
+        </Pressable>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -148,39 +105,36 @@ export default function ParametresScreen() {
   );
 }
 
+function PermRow({ icon, label }: { icon: string; label: string }) {
+  const colors = useColors();
+  return (
+    <View style={styles.permRow}>
+      <Text style={styles.permIcon}>{icon}</Text>
+      <Text style={[styles.permLabel, { color: colors.foreground }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5,
-  },
-  titre: { fontSize: 22, fontWeight: '700' },
-  scroll: { padding: 16, gap: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 12, marginBottom: 8 },
-  card: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 12, marginBottom: 4 },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600' },
-  input: {
-    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, fontSize: 15, minHeight: 44,
-  },
-  roleOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 12, borderRadius: 10, borderWidth: 1.5,
-  },
-  roleIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  roleInfo: { flex: 1 },
-  roleNom: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  roleDesc: { fontSize: 12, lineHeight: 17 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  infoLabel: { fontSize: 13 },
-  infoValue: { fontSize: 13, fontWeight: '500' },
-  infoNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    padding: 10, borderRadius: 8, borderWidth: 1, marginTop: 4,
-  },
-  infoNoteText: { flex: 1, fontSize: 12, lineHeight: 17 },
-  btnSave: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 16,
-  },
-  btnSaveText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  header: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  scrollContent: { padding: 16, gap: 12, paddingBottom: 32 },
+  card: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 10 },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 24, fontWeight: '700' },
+  profileInfo: { flex: 1, gap: 4 },
+  profileName: { fontSize: 16, fontWeight: '700' },
+  profileEmail: { fontSize: 13 },
+  roleBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  roleBadgeText: { fontSize: 13, fontWeight: '600' },
+  permRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  permIcon: { fontSize: 16, width: 24 },
+  permLabel: { fontSize: 14, flex: 1 },
+  noRoleText: { fontSize: 14, lineHeight: 20 },
+  infoBox: { borderRadius: 12, padding: 12, borderWidth: 1 },
+  infoText: { fontSize: 13, lineHeight: 18 },
+  logoutBtn: { borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1 },
+  logoutBtnText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
 });

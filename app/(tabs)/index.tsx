@@ -1,258 +1,229 @@
-import { ScrollView, Text, View, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useCallback } from "react";
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useAuthContext } from '@/lib/auth-context';
+import { trpc } from '@/lib/trpc';
+import { useColors } from '@/hooks/use-colors';
 
-import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
-import { useColors } from "@/hooks/use-colors";
-import { STATUT_LABELS, STATUT_COLORS, ChantierStatut } from "@/types";
+const STATUT_LABELS: Record<string, string> = {
+  demande: 'Demande reçue', analyse: 'En analyse', offre_envoyee: 'Offre envoyée',
+  documents_demandes: 'Documents demandés', validation_admin: 'Validation admin',
+  autorise: 'Autorisé', en_cours: 'En cours', volume_atteint: 'Volume atteint',
+  cloture: 'Clôturé', refuse: 'Refusé',
+};
+const STATUT_COLORS: Record<string, string> = {
+  demande: '#6B7280', analyse: '#F59E0B', offre_envoyee: '#3B82F6',
+  documents_demandes: '#8B5CF6', validation_admin: '#F97316',
+  autorise: '#10B981', en_cours: '#059669', volume_atteint: '#EF4444',
+  cloture: '#6B7280', refuse: '#DC2626',
+};
 
-function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon: any }) {
+export default function DashboardScreen() {
+  const { user, isGestionnaire } = useAuthContext();
   const colors = useColors();
-  return (
-    <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
-        <IconSymbol name={icon} size={20} color={color} />
-      </View>
-      <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: colors.muted }]}>{label}</Text>
-    </View>
-  );
-}
-
-function ChantierCard({ chantier, onPress }: { chantier: any; onPress: () => void }) {
-  const colors = useColors();
-  const statutColor = STATUT_COLORS[chantier.statut as ChantierStatut] || colors.muted;
-  const pct = chantier.volumeDeclare
-    ? Math.min(100, Math.round((chantier.tonnageAccepte / chantier.volumeDeclare) * 100))
-    : 0;
-
-  return (
-    <TouchableOpacity
-      style={[styles.chantierCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <View style={styles.chantierHeader}>
-        <View style={styles.chantierTitleRow}>
-          <Text style={[styles.chantierNom, { color: colors.foreground }]} numberOfLines={1}>
-            {chantier.societe.nom}
-          </Text>
-          <View style={[styles.statutBadge, { backgroundColor: statutColor + '20' }]}>
-            <Text style={[styles.statutText, { color: statutColor }]}>
-              {STATUT_LABELS[chantier.statut as ChantierStatut]}
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.chantierLoc, { color: colors.muted }]} numberOfLines={1}>
-          {chantier.localisationChantier}
-        </Text>
-      </View>
-      {chantier.tonnageAccepte > 0 && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressRow}>
-            <Text style={[styles.progressLabel, { color: colors.muted }]}>
-              {chantier.tonnageAccepte.toFixed(1)} T acceptées
-            </Text>
-            <Text style={[styles.progressPct, { color: colors.primary }]}>{pct}%</Text>
-          </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 90 ? '#DC2626' : colors.primary }]} />
-          </View>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-}
-
-export default function TableauDeBord() {
-  const colors = useColors();
-  const router = useRouter();
-  const { chantiers, passages, incidents, profil, refreshChantiers, refreshPassages } = useApp();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([refreshChantiers(), refreshPassages()]);
-    setRefreshing(false);
-  }, [refreshChantiers, refreshPassages]);
-
   const today = new Date().toISOString().split('T')[0];
-  const passagesAujourdhui = passages.filter(p => p.date.startsWith(today));
-  const tonnageJour = passagesAujourdhui.filter(p => p.accepte).reduce((s, p) => s + p.tonnage, 0);
-  const refusJour = passagesAujourdhui.filter(p => !p.accepte).length;
-  const chantiersActifs = chantiers.filter(c => c.statut === 'autorise' || c.statut === 'en_cours');
-  const alertes = chantiers.filter(c => c.statut === 'volume_atteint' || c.statut === 'validation_admin');
-  const incidentsOuverts = incidents.filter(i => !i.resolu);
 
-  const dateAffichage = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const statsQuery = trpc.stats.jour.useQuery({ date: today });
+  const chantiersQuery = trpc.chantiers.list.useQuery();
+  const incidentsQuery = trpc.incidents.list.useQuery();
+
+  const isLoading = statsQuery.isLoading || chantiersQuery.isLoading;
+
+  function handleRefresh() {
+    statsQuery.refetch();
+    chantiersQuery.refetch();
+    incidentsQuery.refetch();
+  }
+
+  const stats = statsQuery.data;
+  const chantiers = chantiersQuery.data ?? [];
+  const incidents = (incidentsQuery.data ?? []).filter((i: any) => i.statut !== 'resolu');
+
+  const chantiersActifs = chantiers.filter((c: any) => ['autorise', 'en_cours'].includes(c.statut));
+  const chantiersEnAttente = chantiers.filter((c: any) => ['demande', 'analyse', 'offre_envoyee', 'documents_demandes', 'validation_admin'].includes(c.statut));
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* En-tête */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.muted }]}>Bonjour, {profil.nom}</Text>
-            <Text style={[styles.siteName, { color: colors.foreground }]}>{profil.siteNom}</Text>
-            <Text style={[styles.dateText, { color: colors.muted }]}>{dateAffichage}</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+    <ScreenContainer>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            {isGestionnaire ? '📊 Tableau de bord' : '🚛 Contrôle site'}
+          </Text>
+          <Text style={[styles.headerSub, { color: colors.muted }]}>
+            {new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </Text>
+        </View>
+        {isGestionnaire && (
+          <Pressable
             onPress={() => router.push('/chantier/nouveau' as any)}
-            activeOpacity={0.8}
+            style={({ pressed }) => [styles.newBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
           >
-            <IconSymbol name="plus" size={22} color="#fff" />
-          </TouchableOpacity>
+            <Text style={styles.newBtnText}>+ Dossier</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />}
+      >
+        {/* Stats du jour */}
+        <View style={[styles.statsGrid]}>
+          <StatCard
+            label="Camions aujourd'hui"
+            value={stats ? String(stats.totalCamions) : '—'}
+            color="#3B82F6"
+            colors={colors}
+          />
+          <StatCard
+            label="Tonnage accepté"
+            value={stats ? `${Number(stats.tonnageAccepte).toFixed(0)} T` : '—'}
+            color="#10B981"
+            colors={colors}
+          />
+          <StatCard
+            label="Refus"
+            value={stats ? String(stats.refuses) : '—'}
+            color="#EF4444"
+            colors={colors}
+          />
+          <StatCard
+            label="Incidents ouverts"
+            value={String(incidents.length)}
+            color={incidents.length > 0 ? '#F59E0B' : '#10B981'}
+            colors={colors}
+          />
         </View>
 
         {/* Alertes */}
-        {alertes.length > 0 && (
-          <View style={[styles.alertBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#D97706" />
-            <Text style={[styles.alertText, { color: '#92400E' }]}>
-              {alertes.length} chantier{alertes.length > 1 ? 's' : ''} nécessite{alertes.length > 1 ? 'nt' : ''} votre attention
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/chantiers' as any)}>
-              <Text style={{ color: '#D97706', fontWeight: '600', fontSize: 13 }}>Voir</Text>
-            </TouchableOpacity>
-          </View>
+        {incidents.length > 0 && (
+          <Pressable
+            onPress={() => router.push('/incident/nouveau' as any)}
+            style={[styles.alertBanner, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}
+          >
+            <Text style={styles.alertBannerText}>⚠️ {incidents.length} incident(s) ouvert(s) — Appuyer pour voir</Text>
+          </Pressable>
         )}
-
-        {/* Stats du jour */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Aujourd'hui</Text>
-        <View style={styles.statsGrid}>
-          <StatCard label="Camions" value={passagesAujourdhui.length} color={colors.primary} icon="truck.box.fill" />
-          <StatCard label="Tonnage" value={`${tonnageJour.toFixed(1)} T`} color={colors.success} icon="scalemass.fill" />
-          <StatCard label="Refus" value={refusJour} color={colors.error} icon="xmark.circle.fill" />
-          <StatCard label="Incidents" value={incidentsOuverts.length} color={colors.warning} icon="exclamationmark.triangle.fill" />
-        </View>
 
         {/* Chantiers actifs */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Chantiers actifs</Text>
-          <TouchableOpacity onPress={() => router.push('/chantiers' as any)}>
-            <Text style={[styles.voirTout, { color: colors.primary }]}>Voir tout</Text>
-          </TouchableOpacity>
-        </View>
-
-        {chantiersActifs.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <IconSymbol name="folder.fill" size={32} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Aucun chantier actif</Text>
-            <TouchableOpacity
-              style={[styles.emptyBtn, { borderColor: colors.primary }]}
-              onPress={() => router.push('/chantier/nouveau' as any)}
-            >
-              <Text style={[styles.emptyBtnText, { color: colors.primary }]}>Nouveau chantier</Text>
-            </TouchableOpacity>
+        {chantiersActifs.length > 0 && (
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Chantiers actifs ({chantiersActifs.length})</Text>
+            {chantiersActifs.map((c: any) => {
+              const volumeRef = Number(c.volumeDeclare) || Number(c.volumeEstime);
+              const tonnage = Number(c.tonnageAccepte) || 0;
+              const pct = volumeRef > 0 ? Math.min(100, (tonnage / volumeRef) * 100) : 0;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => router.push((`/chantier/${c.id}`) as any)}
+                  style={({ pressed }) => [styles.chantierCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <View style={styles.chantierCardHeader}>
+                    <Text style={[styles.chantierNom, { color: colors.foreground }]} numberOfLines={1}>{c.societeNom}</Text>
+                    <View style={[styles.statutBadge, { backgroundColor: (STATUT_COLORS[c.statut] || '#6B7280') + '20' }]}>
+                      <Text style={[styles.statutBadgeText, { color: STATUT_COLORS[c.statut] || '#6B7280' }]}>
+                        {STATUT_LABELS[c.statut] || c.statut}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.chantierLoc, { color: colors.muted }]} numberOfLines={1}>{c.localisationChantier}</Text>
+                  <View style={styles.progressRow}>
+                    <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                      <View style={[styles.progressFill, { width: (pct + '%') as any, backgroundColor: pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#10B981' }]} />
+                    </View>
+                    <Text style={[styles.progressText, { color: colors.muted }]}>{tonnage.toFixed(0)} / {volumeRef.toFixed(0)} T</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
-        ) : (
-          chantiersActifs.slice(0, 3).map(c => (
-            <ChantierCard
-              key={c.id}
-              chantier={c}
-              onPress={() => router.push(`/chantier/${c.id}` as any)}
-            />
-          ))
         )}
 
-        {/* Raccourcis rapides */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 8 }]}>Actions rapides</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/camion/nouveau' as any)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.quickIcon, { backgroundColor: colors.primary + '15' }]}>
-              <IconSymbol name="truck.box.fill" size={22} color={colors.primary} />
-            </View>
-            <Text style={[styles.quickLabel, { color: colors.foreground }]}>Arrivée camion</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/chantier/nouveau' as any)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.quickIcon, { backgroundColor: colors.success + '15' }]}>
-              <IconSymbol name="plus.circle.fill" size={22} color={colors.success} />
-            </View>
-            <Text style={[styles.quickLabel, { color: colors.foreground }]}>Nouveau chantier</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/registre' as any)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.quickIcon, { backgroundColor: colors.warning + '15' }]}>
-              <IconSymbol name="list.bullet.clipboard.fill" size={22} color={colors.warning} />
-            </View>
-            <Text style={[styles.quickLabel, { color: colors.foreground }]}>Registre du jour</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Chantiers en attente (gestionnaire seulement) */}
+        {isGestionnaire && chantiersEnAttente.length > 0 && (
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>En attente d'action ({chantiersEnAttente.length})</Text>
+            {chantiersEnAttente.slice(0, 5).map((c: any) => (
+              <Pressable
+                key={c.id}
+                onPress={() => router.push((`/chantier/${c.id}`) as any)}
+                style={({ pressed }) => [styles.chantierCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <View style={styles.chantierCardHeader}>
+                  <Text style={[styles.chantierNom, { color: colors.foreground }]} numberOfLines={1}>{c.societeNom}</Text>
+                  <View style={[styles.statutBadge, { backgroundColor: (STATUT_COLORS[c.statut] || '#6B7280') + '20' }]}>
+                    <Text style={[styles.statutBadgeText, { color: STATUT_COLORS[c.statut] || '#6B7280' }]}>
+                      {STATUT_LABELS[c.statut] || c.statut}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.chantierLoc, { color: colors.muted }]} numberOfLines={1}>{c.localisationChantier}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
-        <View style={{ height: 20 }} />
+        {/* Action rapide préposé */}
+        {!isGestionnaire && (
+          <View style={styles.quickActions}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Actions rapides</Text>
+            <Pressable
+              onPress={() => router.push('/camion/nouveau' as any)}
+              style={({ pressed }) => [styles.quickBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Text style={styles.quickBtnText}>🚛 Enregistrer un camion</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/incident/nouveau' as any)}
+              style={({ pressed }) => [styles.quickBtn, { backgroundColor: '#F59E0B', opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Text style={styles.quickBtnText}>⚠️ Signaler un incident</Text>
+            </Pressable>
+          </View>
+        )}
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </ScreenContainer>
   );
 }
 
+function StatCard({ label, value, color, colors }: { label: string; value: string; color: string; colors: any }) {
+  return (
+    <View style={[styles.statCard, { backgroundColor: color + '12', borderColor: color + '30' }]}>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.muted }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 32 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  greeting: { fontSize: 13, marginBottom: 2 },
-  siteName: { fontSize: 20, fontWeight: '700', marginBottom: 2 },
-  dateText: { fontSize: 13 },
-  addBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  alertBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 16,
-  },
-  alertText: { flex: 1, fontSize: 13, fontWeight: '500' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 4 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  voirTout: { fontSize: 13, fontWeight: '600' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  statCard: {
-    flex: 1, minWidth: '44%', padding: 14, borderRadius: 12,
-    borderWidth: 1, alignItems: 'center', gap: 6,
-  },
-  statIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontSize: 20, fontWeight: '700' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSub: { fontSize: 13, marginTop: 2 },
+  newBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  newBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  scrollContent: { padding: 16, gap: 16, paddingBottom: 32 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: { flex: 1, minWidth: '45%', borderRadius: 14, padding: 14, borderWidth: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 24, fontWeight: '800' },
   statLabel: { fontSize: 11, textAlign: 'center' },
-  chantierCard: {
-    borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10,
-  },
-  chantierHeader: { gap: 4, marginBottom: 8 },
-  chantierTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  chantierNom: { flex: 1, fontSize: 14, fontWeight: '600' },
-  chantierLoc: { fontSize: 12 },
+  alertBanner: { borderRadius: 12, padding: 12, borderWidth: 1 },
+  alertBannerText: { fontSize: 14, color: '#92400E', fontWeight: '600' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  chantierCard: { borderRadius: 14, padding: 14, borderWidth: 1, marginBottom: 8, gap: 6 },
+  chantierCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  chantierNom: { fontSize: 15, fontWeight: '600', flex: 1 },
+  chantierLoc: { fontSize: 13 },
   statutBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statutText: { fontSize: 11, fontWeight: '600' },
-  progressContainer: { gap: 4 },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressLabel: { fontSize: 11 },
-  progressPct: { fontSize: 11, fontWeight: '600' },
-  progressBar: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2 },
-  emptyCard: {
-    borderRadius: 12, borderWidth: 1, padding: 24,
-    alignItems: 'center', gap: 10, marginBottom: 10,
-  },
-  emptyText: { fontSize: 14 },
-  emptyBtn: { borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
-  emptyBtnText: { fontSize: 13, fontWeight: '600' },
-  quickActions: { flexDirection: 'row', gap: 10 },
-  quickBtn: {
-    flex: 1, borderRadius: 12, borderWidth: 1, padding: 14,
-    alignItems: 'center', gap: 8,
-  },
-  quickIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
+  statutBadgeText: { fontSize: 11, fontWeight: '600' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progressBar: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  progressText: { fontSize: 11, minWidth: 80, textAlign: 'right' },
+  quickActions: { gap: 10 },
+  quickBtn: { borderRadius: 14, padding: 16, alignItems: 'center' },
+  quickBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

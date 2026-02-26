@@ -1,201 +1,201 @@
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Switch, KeyboardAvoidingView, Platform
-} from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useMemo } from "react";
+import { useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { trpc } from '@/lib/trpc';
+import { useColors } from '@/hooks/use-colors';
 
-import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
-import { useColors } from "@/hooks/use-colors";
-import { IncidentType } from "@/types";
+type IncidentType = 'camion_refuse' | 'suspicion_post_deversement' | 'autre';
 
-const TYPES_INCIDENT: { id: IncidentType; label: string; desc: string; color: string }[] = [
-  { id: 'camion_refuse', label: 'Camion refusé', desc: 'Refus lors du contrôle administratif ou visuel', color: '#DC2626' },
-  { id: 'suspicion_post_deversement', label: 'Suspicion post-déversement', desc: 'Anomalie constatée après déversement', color: '#D97706' },
-  { id: 'autre', label: 'Autre incident', desc: 'Tout autre incident sur le site', color: '#6B7280' },
+const TYPES: { value: IncidentType; label: string; desc: string }[] = [
+  { value: 'camion_refuse', label: 'Camion refuse', desc: 'Camion refuse lors du controle' },
+  { value: 'suspicion_post_deversement', label: 'Suspicion post-deversement', desc: 'Anomalie detectee apres deversement' },
+  { value: 'autre', label: 'Autre incident', desc: 'Autre type incident sur site' },
 ];
 
-export default function NouvelIncident() {
+export default function NouvelIncidentScreen() {
   const colors = useColors();
-  const router = useRouter();
-  const { chantiers, ajouterIncident } = useApp();
+  const utils = trpc.useUtils();
+  const chantiersQuery = trpc.chantiers.list.useQuery();
+  const chantiers = (chantiersQuery.data ?? []).filter((c: any) => ['autorise', 'en_cours'].includes(c.statut));
 
+  const createMutation = trpc.incidents.create.useMutation({
+    onSuccess: (data) => {
+      utils.incidents.list.invalidate();
+      Alert.alert('Incident cree', "L'incident a ete enregistre.", [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    },
+    onError: (err: any) => Alert.alert('Erreur', err.message),
+  });
+
+  const today = new Date().toISOString().split('T')[0];
   const [type, setType] = useState<IncidentType>('camion_refuse');
-  const [chantierId, setChantierId] = useState('');
+  const [chantierId, setChantierId] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [zoneIsolee, setZoneIsolee] = useState(false);
   const [clientInforme, setClientInforme] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState('');
 
-  const chantiersActifs = useMemo(
-    () => chantiers.filter(c => c.statut !== 'cloture'),
-    [chantiers]
-  );
+  const chantierSel = chantiers.find((c: any) => c.id === chantierId);
 
-  const handleSave = async () => {
-    if (!description.trim()) {
-      Alert.alert('Description requise', 'Veuillez décrire l\'incident.');
+  function handleSubmit() {
+    if (chantierId === null || !chantierSel) {
+      Alert.alert('Erreur', 'Selectionnez un chantier.');
       return;
     }
-    setSaving(true);
-    try {
-      const chantier = chantiers.find(c => c.id === chantierId);
-      await ajouterIncident({
-        type,
-        chantierId: chantierId || 'inconnu',
-        chantierNom: chantier?.societe.nom || 'Non spécifié',
-        date: new Date().toISOString(),
-        description: description.trim(),
-        zoneIsolee,
-        clientInforme,
-        resolu: false,
-      });
-      Alert.alert('Incident enregistré', 'L\'incident a été ajouté au dossier.');
-      router.back();
-    } catch {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'incident.');
-    } finally {
-      setSaving(false);
+    if (!description.trim()) {
+      Alert.alert('Erreur', 'La description est obligatoire.');
+      return;
     }
-  };
+    createMutation.mutate({
+      type,
+      chantierId,
+      chantierNom: chantierSel.societeNom,
+      date: today,
+      description: description.trim(),
+      zoneIsolee,
+      clientInforme,
+      notes: notes.trim() || undefined,
+    });
+  }
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <IconSymbol name="chevron.left" size={22} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Nouvel incident</Text>
+    <ScreenContainer>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()}>
+          <Text style={[styles.backText, { color: colors.primary }]}>Annuler</Text>
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Nouvel incident</Text>
+        <View style={{ width: 70 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Type incident *</Text>
+          {TYPES.map(t => {
+            const sel = type === t.value;
+            return (
+              <Pressable key={t.value} onPress={() => setType(t.value)}
+                style={[styles.typeOption, { backgroundColor: sel ? colors.primary + '15' : colors.background, borderColor: sel ? colors.primary : colors.border }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.typeLabel, { color: sel ? colors.primary : colors.foreground }]}>{t.label}</Text>
+                  <Text style={[styles.typeDesc, { color: colors.muted }]}>{t.desc}</Text>
+                </View>
+                {sel && <Text style={{ color: colors.primary, fontSize: 18 }}>OK</Text>}
+              </Pressable>
+            );
+          })}
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Type */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Type d'incident</Text>
-          {TYPES_INCIDENT.map(t => (
-            <TouchableOpacity
-              key={t.id}
-              style={[styles.typeOption,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                type === t.id && { borderColor: t.color, backgroundColor: t.color + '10' }
-              ]}
-              onPress={() => setType(t.id)}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.typeIndicator, { backgroundColor: t.color }]} />
-              <View style={styles.typeInfo}>
-                <Text style={[styles.typeLabel, { color: colors.foreground }]}>{t.label}</Text>
-                <Text style={[styles.typeDesc, { color: colors.muted }]}>{t.desc}</Text>
-              </View>
-              {type === t.id && <IconSymbol name="checkmark.circle.fill" size={20} color={t.color} />}
-            </TouchableOpacity>
-          ))}
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Chantier *</Text>
+          {chantiersQuery.isLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : chantiers.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.muted }]}>Aucun chantier autorise</Text>
+          ) : (
+            chantiers.map((c: any) => {
+              const sel = chantierId === c.id;
+              return (
+                <Pressable key={c.id} onPress={() => setChantierId(c.id)}
+                  style={[styles.chantierOption, { backgroundColor: sel ? colors.primary + '15' : colors.background, borderColor: sel ? colors.primary : colors.border }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.chantierNom, { color: sel ? colors.primary : colors.foreground }]}>{c.societeNom}</Text>
+                    <Text style={[styles.chantierLoc, { color: colors.muted }]} numberOfLines={1}>{c.localisationChantier}</Text>
+                  </View>
+                  {sel && <Text style={{ color: colors.primary, fontSize: 18 }}>OK</Text>}
+                </Pressable>
+              );
+            })
+          )}
+        </View>
 
-          {/* Chantier */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Chantier concerné</Text>
-          <View style={styles.chantiersList}>
-            {chantiersActifs.map(c => (
-              <TouchableOpacity
-                key={c.id}
-                style={[styles.chantierOption,
-                  { borderColor: colors.border, backgroundColor: colors.surface },
-                  chantierId === c.id && { borderColor: colors.primary, backgroundColor: colors.primary + '10' }
-                ]}
-                onPress={() => setChantierId(c.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.chantierNom, { color: colors.foreground }]} numberOfLines={1}>
-                  {c.societe.nom}
-                </Text>
-                {chantierId === c.id && <IconSymbol name="checkmark" size={16} color={colors.primary} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Description */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Description</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Description *</Text>
           <TextInput
-            style={[styles.textarea, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Décrivez l'incident en détail..."
-            placeholderTextColor={colors.muted}
+            placeholder="Decrivez l'incident..."
             multiline
-            textAlignVertical="top"
+            placeholderTextColor={colors.muted}
+            style={[styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
           />
+        </View>
 
-          {/* Actions */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Actions prises</Text>
-          <View style={[styles.actionsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.switchRow}>
-              <View>
-                <Text style={[styles.switchLabel, { color: colors.foreground }]}>Zone isolée</Text>
-                <Text style={[styles.switchHint, { color: colors.muted }]}>La zone de déversement a été isolée</Text>
-              </View>
-              <Switch value={zoneIsolee} onValueChange={setZoneIsolee} trackColor={{ true: colors.warning }} />
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Actions immediates</Text>
+          <Pressable onPress={() => setZoneIsolee(!zoneIsolee)}
+            style={[styles.toggleRow, { backgroundColor: zoneIsolee ? '#F59E0B15' : colors.background, borderColor: zoneIsolee ? '#F59E0B' : colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Zone isolee</Text>
+              <Text style={[styles.toggleDesc, { color: colors.muted }]}>La zone a ete isolee</Text>
             </View>
-            <View style={styles.switchRow}>
-              <View>
-                <Text style={[styles.switchLabel, { color: colors.foreground }]}>Client informé</Text>
-                <Text style={[styles.switchHint, { color: colors.muted }]}>Le client a été contacté</Text>
-              </View>
-              <Switch value={clientInforme} onValueChange={setClientInforme} trackColor={{ true: colors.success }} />
+            <View style={[styles.checkbox, { backgroundColor: zoneIsolee ? '#F59E0B' : 'transparent', borderColor: zoneIsolee ? '#F59E0B' : colors.border }]}>
+              {zoneIsolee && <Text style={{ color: '#fff', fontSize: 14 }}>OK</Text>}
             </View>
-          </View>
+          </Pressable>
+          <Pressable onPress={() => setClientInforme(!clientInforme)}
+            style={[styles.toggleRow, { backgroundColor: clientInforme ? '#3B82F615' : colors.background, borderColor: clientInforme ? '#3B82F6' : colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Client informe</Text>
+              <Text style={[styles.toggleDesc, { color: colors.muted }]}>Le client a ete contacte</Text>
+            </View>
+            <View style={[styles.checkbox, { backgroundColor: clientInforme ? '#3B82F6' : 'transparent', borderColor: clientInforme ? '#3B82F6' : colors.border }]}>
+              {clientInforme && <Text style={{ color: '#fff', fontSize: 14 }}>OK</Text>}
+            </View>
+          </Pressable>
+        </View>
 
-          <TouchableOpacity
-            style={[styles.btnSave, { backgroundColor: saving ? colors.muted : colors.error }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#fff" />
-            <Text style={styles.btnText}>{saving ? 'Enregistrement...' : 'Enregistrer l\'incident'}</Text>
-          </TouchableOpacity>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Notes (optionnel)</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Notes supplementaires..."
+            multiline
+            placeholderTextColor={colors.muted}
+            style={[styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 60 }]}
+          />
+        </View>
 
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Pressable
+          onPress={handleSubmit}
+          disabled={createMutation.isPending}
+          style={({ pressed }) => [styles.submitBtn, { backgroundColor: '#EF4444', opacity: pressed || createMutation.isPending ? 0.7 : 1 }]}
+        >
+          {createMutation.isPending
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={styles.submitBtnText}>Declarer l'incident</Text>
+          }
+        </Pressable>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5,
-  },
-  backBtn: { padding: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5 },
+  backText: { fontSize: 17 },
   headerTitle: { fontSize: 17, fontWeight: '600' },
-  scroll: { padding: 16, gap: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 12, marginBottom: 8 },
-  typeOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 10, borderWidth: 1.5, padding: 12, marginBottom: 8, overflow: 'hidden',
-  },
-  typeIndicator: { width: 4, height: '100%', borderRadius: 2, alignSelf: 'stretch', minHeight: 40 },
-  typeInfo: { flex: 1 },
-  typeLabel: { fontSize: 14, fontWeight: '600' },
-  typeDesc: { fontSize: 12, marginTop: 2 },
-  chantiersList: { gap: 8, marginBottom: 4 },
-  chantierOption: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 12, borderRadius: 10, borderWidth: 1.5,
-  },
-  chantierNom: { fontSize: 14, fontWeight: '500', flex: 1 },
-  textarea: {
-    borderWidth: 1, borderRadius: 10, padding: 12,
-    fontSize: 15, minHeight: 100, marginBottom: 4,
-  },
-  actionsCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 14, marginBottom: 4 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  switchLabel: { fontSize: 14, fontWeight: '500' },
-  switchHint: { fontSize: 11, marginTop: 1 },
-  btnSave: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 16,
-  },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  scrollContent: { padding: 16, gap: 12, paddingBottom: 32 },
+  card: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 10 },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  typeOption: { borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  typeLabel: { fontSize: 15, fontWeight: '600' },
+  typeDesc: { fontSize: 12 },
+  chantierOption: { borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  chantierNom: { fontSize: 14, fontWeight: '600' },
+  chantierLoc: { fontSize: 12 },
+  emptyText: { fontSize: 14, textAlign: 'center', paddingVertical: 8 },
+  textArea: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, minHeight: 80, textAlignVertical: 'top' },
+  toggleRow: { borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  toggleLabel: { fontSize: 14, fontWeight: '600' },
+  toggleDesc: { fontSize: 12 },
+  checkbox: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  submitBtn: { borderRadius: 14, padding: 16, alignItems: 'center' },
+  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

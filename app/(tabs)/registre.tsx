@@ -1,14 +1,13 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useMemo } from "react";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
+import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
-import { PassageCamion, MOTIF_REFUS_LABELS } from "@/types";
 
-function PassageRow({ passage }: { passage: PassageCamion }) {
+function PassageRow({ passage }: { passage: any }) {
   const colors = useColors();
   return (
     <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -16,9 +15,9 @@ function PassageRow({ passage }: { passage: PassageCamion }) {
       <View style={styles.rowContent}>
         <View style={styles.rowTop}>
           <Text style={[styles.rowPlaque, { color: colors.foreground }]}>{passage.plaque}</Text>
-          <Text style={[styles.rowHeure, { color: colors.muted }]}>{passage.heure}</Text>
+          <Text style={[styles.rowHeure, { color: colors.muted }]}>{passage.heureArrivee}</Text>
           {passage.accepte ? (
-            <Text style={[styles.rowTonnage, { color: colors.success }]}>{passage.tonnage.toFixed(1)} T</Text>
+            <Text style={[styles.rowTonnage, { color: colors.success }]}>{Number(passage.tonnage).toFixed(1)} T</Text>
           ) : (
             <View style={[styles.refusBadge, { backgroundColor: colors.error + '15' }]}>
               <Text style={[styles.refusBadgeText, { color: colors.error }]}>Refusé</Text>
@@ -30,7 +29,7 @@ function PassageRow({ passage }: { passage: PassageCamion }) {
         </Text>
         {!passage.accepte && passage.motifRefus && (
           <Text style={[styles.rowMotif, { color: colors.error }]}>
-            {MOTIF_REFUS_LABELS[passage.motifRefus]}
+            {passage.motifRefus}
           </Text>
         )}
         <View style={styles.rowMeta}>
@@ -46,33 +45,34 @@ function PassageRow({ passage }: { passage: PassageCamion }) {
 
 export default function RegistreScreen() {
   const colors = useColors();
-  const { passages } = useApp();
   const [dateFiltre, setDateFiltre] = useState<'aujourd_hui' | 'semaine' | 'tout'>('aujourd_hui');
 
   const today = new Date().toISOString().split('T')[0];
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+  const passagesQuery = trpc.passages.list.useQuery();
+  const allPassages = passagesQuery.data ?? [];
+
   const passagesFiltres = useMemo(() => {
-    return passages.filter(p => {
-      if (dateFiltre === 'aujourd_hui') return p.date.startsWith(today);
-      if (dateFiltre === 'semaine') return p.date >= weekAgo;
+    return allPassages.filter((p: any) => {
+      if (dateFiltre === 'aujourd_hui') return p.datePassage === today;
+      if (dateFiltre === 'semaine') return p.datePassage >= weekAgo;
       return true;
-    }).sort((a, b) => {
-      const da = a.date + a.heure;
-      const db = b.date + b.heure;
+    }).sort((a: any, b: any) => {
+      const da = a.datePassage + (a.heureArrivee || '');
+      const db = b.datePassage + (b.heureArrivee || '');
       return db.localeCompare(da);
     });
-  }, [passages, dateFiltre, today, weekAgo]);
+  }, [allPassages, dateFiltre, today, weekAgo]);
 
-  const totalAcceptes = passagesFiltres.filter(p => p.accepte).length;
-  const totalRefus = passagesFiltres.filter(p => !p.accepte).length;
-  const totalTonnage = passagesFiltres.filter(p => p.accepte).reduce((s, p) => s + p.tonnage, 0);
+  const totalAcceptes = passagesFiltres.filter((p: any) => p.accepte).length;
+  const totalRefus = passagesFiltres.filter((p: any) => !p.accepte).length;
+  const totalTonnage = passagesFiltres.filter((p: any) => p.accepte).reduce((s: number, p: any) => s + Number(p.tonnage), 0);
 
-  // Grouper par date
   const grouped = useMemo(() => {
-    const map = new Map<string, PassageCamion[]>();
-    passagesFiltres.forEach(p => {
-      const key = p.date;
+    const map = new Map<string, any[]>();
+    passagesFiltres.forEach((p: any) => {
+      const key = p.datePassage;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     });

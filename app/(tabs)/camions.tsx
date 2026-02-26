@@ -1,14 +1,13 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
+import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
-import { PassageCamion, MOTIF_REFUS_LABELS } from "@/types";
 
-function PassageItem({ passage }: { passage: PassageCamion }) {
+function PassageItem({ passage }: { passage: any }) {
   const colors = useColors();
   return (
     <View style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -16,7 +15,7 @@ function PassageItem({ passage }: { passage: PassageCamion }) {
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>
           <Text style={[styles.plaque, { color: colors.foreground }]}>{passage.plaque}</Text>
-          <Text style={[styles.heure, { color: colors.muted }]}>{passage.heure}</Text>
+          <Text style={[styles.heure, { color: colors.muted }]}>{passage.heureArrivee}</Text>
         </View>
         <Text style={[styles.chantierNom, { color: colors.muted }]} numberOfLines={1}>
           {passage.chantierNom}
@@ -24,10 +23,10 @@ function PassageItem({ passage }: { passage: PassageCamion }) {
         <View style={styles.itemFooter}>
           <Text style={[styles.transporteur, { color: colors.muted }]}>{passage.transporteur}</Text>
           {passage.accepte ? (
-            <Text style={[styles.tonnage, { color: colors.success }]}>{passage.tonnage.toFixed(1)} T acceptées</Text>
+            <Text style={[styles.tonnage, { color: colors.success }]}>{Number(passage.tonnage).toFixed(1)} T acceptées</Text>
           ) : (
             <Text style={[styles.refusMotif, { color: colors.error }]}>
-              {passage.motifRefus ? MOTIF_REFUS_LABELS[passage.motifRefus] : 'Refusé'}
+              {passage.motifRefus || 'Refusé'}
             </Text>
           )}
         </View>
@@ -39,22 +38,17 @@ function PassageItem({ passage }: { passage: PassageCamion }) {
 export default function CamionsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { passages, chantiers } = useApp();
-
   const today = new Date().toISOString().split('T')[0];
-  const passagesAujourdhui = useMemo(
-    () => passages.filter(p => p.date.startsWith(today)).sort((a, b) => b.heure.localeCompare(a.heure)),
-    [passages, today]
-  );
 
-  const chantiersAutorises = useMemo(
-    () => chantiers.filter(c => c.statut === 'autorise' || c.statut === 'en_cours'),
-    [chantiers]
-  );
+  const passagesQuery = trpc.passages.listByDate.useQuery({ date: today });
+  const passagesAujourdhui = useMemo(() => (passagesQuery.data ?? []).sort((a: any, b: any) => (b.heureArrivee || '').localeCompare(a.heureArrivee || '')), [passagesQuery.data]);
 
-  const acceptes = passagesAujourdhui.filter(p => p.accepte);
-  const refus = passagesAujourdhui.filter(p => !p.accepte);
-  const tonnageJour = acceptes.reduce((s, p) => s + p.tonnage, 0);
+  const chantiersQuery = trpc.chantiers.list.useQuery();
+  const chantiersAutorises = useMemo(() => (chantiersQuery.data ?? []).filter((c: any) => ['autorise','en_cours'].includes(c.statut)), [chantiersQuery.data]);
+
+  const acceptes = passagesAujourdhui.filter((p: any) => p.accepte);
+  const refus = passagesAujourdhui.filter((p: any) => !p.accepte);
+  const tonnageJour = acceptes.reduce((s: number, p: any) => s + Number(p.tonnage), 0);
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -107,11 +101,11 @@ export default function CamionsScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chantiersActifsList}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
+            keyExtractor={(item: any) => String(item.id)}
+            renderItem={({ item }: { item: any }) => (
               <View style={[styles.chantierTag, { backgroundColor: colors.success + '15', borderColor: colors.success }]}>
                 <Text style={[styles.chantierTagText, { color: colors.success }]} numberOfLines={1}>
-                  {item.societe.nom}
+                  {item.societeNom}
                 </Text>
               </View>
             )}
@@ -122,10 +116,10 @@ export default function CamionsScreen() {
       {/* Liste des passages */}
       <FlatList
         data={passagesAujourdhui}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: any) => String(item.id)}
         contentContainerStyle={styles.liste}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => <PassageItem passage={item} />}
+        renderItem={({ item }: { item: any }) => <PassageItem passage={item} />}
         ListEmptyComponent={
           <View style={styles.empty}>
             <IconSymbol name="truck.box.fill" size={48} color={colors.muted} />

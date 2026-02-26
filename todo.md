@@ -44,3 +44,20 @@
 ## Tests
 
 - [x] Tests unitaires store (10 tests passés)
+
+## Modifications v2 — Authentification & Fonctionnalités avancées
+
+- [x] Schéma DB : tables chantiers, passages, incidents, user_roles
+- [x] Migration vers backend tRPC (données partagées mobile + web)
+- [x] Authentification Manus OAuth obligatoire (login/logout)
+- [x] Rôles gestionnaire/préposé gérés par admin côté serveur
+- [x] Blocage des fonctionnalités selon rôle côté backend (protectedProcedure)
+- [x] Écran de connexion (login)
+- [x] Validation stricte champs (email, téléphone belge, dates)
+- [x] Refus automatique si classe > 2 (backend + email)
+- [x] Email automatique offre de prix avec prix/tonne
+- [x] Bouton refus à l'étape 5 validation + motif + email
+- [x] Blocage enregistrement camion si volume atteint ou dépassé
+- [x] Incidents : statuts Ouvert/En cours/Résolu + traçabilité
+- [x] Export facturation PDF/Excel par chantier et par période
+- [x] Envoi emails via serveur (nodemailer ou API)
