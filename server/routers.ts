@@ -7,6 +7,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import {
   emailAutorisation,
+  emailNouvelUtilisateurCreation,
   emailOffrePrix,
   emailRefusClasse,
   emailRefusValidation,
@@ -100,9 +101,9 @@ export const appRouter = router({
           await db.updateUserAppRole(newUser.id, input.appRole);
           // Envoyer un email de bienvenue
           try {
-            const { emailNouvelUtilisateurCreation, sendEmail } = await import("./email");
             const emailOpts = emailNouvelUtilisateurCreation(input.email, input.name, input.appRole);
             await sendEmail(emailOpts);
+            console.log("[Users] Email de bienvenue envoyé à", input.email);
           } catch (err) {
             console.warn("[Users] Email de bienvenue non envoyé:", err);
           }

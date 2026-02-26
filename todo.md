@@ -83,3 +83,8 @@
 - [ ] Formulaire de création manuelle d'utilisateur (nom, email, rôle) dans l'écran Utilisateurs
 - [ ] Backend : procédure tRPC users.create pour créer un utilisateur manuellement
 - [ ] Backend : email de notification à l'admin lors d'un nouvel upsertUser
+
+## Corrections v7 — OAuth mobile et emails
+- [ ] Corriger le schéma OAuth pour Expo Go (exp:// → manus*)
+- [ ] Corriger l'envoi d'email lors de la création manuelle d'utilisateur
+- [ ] Vérifier la configuration du redirect_uri dans constants/oauth.ts
