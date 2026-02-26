@@ -61,3 +61,10 @@
 - [x] Incidents : statuts Ouvert/En cours/Résolu + traçabilité
 - [x] Export facturation PDF/Excel par chantier et par période
 - [x] Envoi emails via serveur (nodemailer ou API)
+
+## Corrections v3 — Navigateur & Gestion utilisateurs
+
+- [x] Corriger compatibilité web (APIs natives non disponibles sur navigateur)
+- [x] Corriger les imports et rendu sur navigateur
+- [x] Ajouter écran gestion des utilisateurs (admin : liste, attribution rôle)
+- [x] Backend : procédure tRPC pour lister et modifier les rôles utilisateurs

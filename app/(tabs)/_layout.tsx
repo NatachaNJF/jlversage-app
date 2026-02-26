@@ -12,7 +12,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 60 + bottomPadding;
-  const { isGestionnaire } = useAuthContext();
+  const { isGestionnaire, isAdmin } = useAuthContext();
 
   return (
     <Tabs
@@ -70,6 +70,14 @@ export default function TabLayout() {
           title: "Facturation",
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="eurosign.circle.fill" color={color} />,
           tabBarItemStyle: isGestionnaire ? {} : { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="utilisateurs"
+        options={{
+          title: "Utilisateurs",
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.fill" color={color} />,
+          tabBarItemStyle: isAdmin ? {} : { display: 'none' },
         }}
       />
       <Tabs.Screen

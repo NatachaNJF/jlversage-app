@@ -1,5 +1,6 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { router, useSegments } from 'expo-router';
 
 interface AuthContextValue {
   user: ReturnType<typeof useAuth>['user'];
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
+  const segments = useSegments();
 
   // Récupérer le rôle depuis l'objet user (étendu par le backend)
   const userAny = auth.user as any;
@@ -24,7 +26,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = role === 'admin';
   const isGestionnaire = isAdmin || appRole === 'gestionnaire';
-  const isPrepose = appRole === 'prepose';
+  const isPrepose = !isAdmin && appRole === 'prepose';
+
+  // Redirection automatique vers login si non connecté
+  useEffect(() => {
+    if (auth.loading) return;
+
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'oauth';
+
+    if (!auth.isAuthenticated && !inAuthGroup) {
+      // Non connecté → rediriger vers login
+      router.replace('/login');
+    } else if (auth.isAuthenticated && inAuthGroup) {
+      // Connecté et sur login → rediriger vers l'app
+      router.replace('/(tabs)');
+    }
+  }, [auth.isAuthenticated, auth.loading, segments]);
 
   return (
     <AuthContext.Provider value={{
