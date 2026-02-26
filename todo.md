@@ -92,3 +92,6 @@
 ## Correction suppression utilisateurs
 - [x] Corriger la suppression d'un utilisateur dans l'écran Utilisateurs
 - [x] Permettre de supprimer son propre compte de test (sauf le dernier admin)
+
+## Correction bouton Supprimer utilisateur
+- [ ] Corriger le bouton Supprimer qui ne fait rien (Pressable + Alert + mutation)

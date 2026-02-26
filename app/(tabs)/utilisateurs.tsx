@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, RefreshControl, TextInput, Modal, Platform } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
@@ -17,6 +17,34 @@ const ROLE_COLORS: Record<string, string> = {
 
 type AppRole = 'gestionnaire' | 'prepose';
 
+// Confirmation cross-platform (web + mobile)
+function useConfirm() {
+  const [state, setState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmLabel?: string;
+    destructive?: boolean;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
+  const confirm = (title: string, message: string, onConfirm: () => void, opts?: { confirmLabel?: string; destructive?: boolean }) => {
+    if (Platform.OS === 'web') {
+      // Sur web, utiliser window.confirm natif du navigateur
+      if (window.confirm(`${title}\n\n${message}`)) {
+        onConfirm();
+      }
+    } else {
+      setState({ visible: true, title, message, onConfirm, ...opts });
+    }
+  };
+
+  const dismiss = () => setState(s => ({ ...s, visible: false }));
+  const handleConfirm = () => { state.onConfirm(); dismiss(); };
+
+  return { confirm, confirmState: state, dismiss, handleConfirm };
+}
+
 export default function UtilisateursScreen() {
   const colors = useColors();
   const { isAdmin, isGestionnaire } = useAuthContext();
@@ -25,6 +53,8 @@ export default function UtilisateursScreen() {
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('prepose');
   const [formError, setFormError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { confirm, confirmState, dismiss, handleConfirm } = useConfirm();
 
   const usersQuery = trpc.users.list.useQuery(undefined, {
     enabled: isAdmin || isGestionnaire,
@@ -32,7 +62,7 @@ export default function UtilisateursScreen() {
 
   const updateRoleMutation = trpc.users.updateRole.useMutation({
     onSuccess: () => { usersQuery.refetch(); },
-    onError: (err) => { Alert.alert('Erreur', err.message || 'Impossible de modifier le rôle.'); },
+    onError: (err) => { setSuccessMsg(null); setFormError(err.message || 'Impossible de modifier le rôle.'); },
   });
 
   const createUserMutation = trpc.users.create.useMutation({
@@ -40,14 +70,19 @@ export default function UtilisateursScreen() {
       usersQuery.refetch();
       setShowForm(false);
       setNewNom(''); setNewEmail(''); setNewRole('prepose'); setFormError(null);
-      Alert.alert('Succès', 'Utilisateur créé et email d\'invitation envoyé.');
+      setSuccessMsg('Utilisateur créé et email d\'invitation envoyé.');
+      setTimeout(() => setSuccessMsg(null), 4000);
     },
     onError: (err) => { setFormError(err.message); },
   });
 
   const deleteUserMutation = trpc.users.delete.useMutation({
-    onSuccess: () => { usersQuery.refetch(); },
-    onError: (err) => { Alert.alert('Erreur', err.message || 'Impossible de supprimer l\'utilisateur.'); },
+    onSuccess: () => {
+      usersQuery.refetch();
+      setSuccessMsg('Utilisateur supprimé.');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    },
+    onError: (err) => { setFormError(err.message || 'Impossible de supprimer l\'utilisateur.'); setTimeout(() => setFormError(null), 4000); },
   });
 
   const handleCreate = () => {
@@ -59,15 +94,23 @@ export default function UtilisateursScreen() {
   };
 
   const handleDeleteUser = (userId: number, userName: string | null) => {
-    Alert.alert(
+    confirm(
       'Supprimer l\'utilisateur',
       `Supprimer ${userName ?? 'cet utilisateur'} ? Cette action est irréversible.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => deleteUserMutation.mutate({ userId }) },
-      ]
+      () => deleteUserMutation.mutate({ userId }),
+      { confirmLabel: 'Supprimer', destructive: true }
     );
   };
+
+  function handleChangeRole(userId: number, userName: string | null, currentRole: string | null) {
+    const nextRole = currentRole === 'gestionnaire' ? 'prepose' : 'gestionnaire';
+    confirm(
+      'Modifier le rôle',
+      `Attribuer le rôle "${nextRole === 'gestionnaire' ? 'Gestionnaire' : 'Préposé'}" à ${userName || 'cet utilisateur'} ?`,
+      () => updateRoleMutation.mutate({ userId, appRole: nextRole as AppRole }),
+      { confirmLabel: 'Confirmer' }
+    );
+  }
 
   // Rediriger si pas gestionnaire ni admin
   if (!isAdmin && !isGestionnaire) {
@@ -82,25 +125,34 @@ export default function UtilisateursScreen() {
     );
   }
 
-  function handleChangeRole(userId: number, userName: string | null, currentRole: string | null) {
-    const newRole = currentRole === 'gestionnaire' ? 'prepose' : 'gestionnaire';
-    Alert.alert(
-      'Modifier le rôle',
-      `Attribuer le rôle "${newRole === 'gestionnaire' ? 'Gestionnaire' : 'Préposé'}" à ${userName || 'cet utilisateur'} ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Confirmer',
-          onPress: () => updateRoleMutation.mutate({ userId, appRole: newRole as 'gestionnaire' | 'prepose' }),
-        },
-      ]
-    );
-  }
-
   const users = usersQuery.data ?? [];
 
   return (
     <ScreenContainer>
+      {/* Modal de confirmation (mobile uniquement — web utilise window.confirm) */}
+      <Modal visible={confirmState.visible} transparent animationType="fade" onRequestClose={dismiss}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{confirmState.title}</Text>
+            <Text style={[styles.modalMessage, { color: colors.muted }]}>{confirmState.message}</Text>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalBtn, { borderColor: colors.border }]}
+                onPress={dismiss}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.muted }]}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: confirmState.destructive ? colors.error : colors.primary, borderColor: 'transparent' }]}
+                onPress={handleConfirm}
+              >
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>{confirmState.confirmLabel || 'Confirmer'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Gestion des utilisateurs</Text>
         <Pressable
@@ -110,6 +162,18 @@ export default function UtilisateursScreen() {
           <Text style={styles.addBtnText}>{showForm ? 'Annuler' : '+ Ajouter'}</Text>
         </Pressable>
       </View>
+
+      {/* Messages de succès/erreur globaux */}
+      {successMsg && (
+        <View style={[styles.successBanner, { backgroundColor: colors.success + '18', borderColor: colors.success }]}>
+          <Text style={[styles.successBannerText, { color: colors.success }]}>✓ {successMsg}</Text>
+        </View>
+      )}
+      {formError && !showForm && (
+        <View style={[styles.errorBanner, { backgroundColor: colors.error + '18', borderColor: colors.error }]}>
+          <Text style={[styles.errorBannerText, { color: colors.error }]}>⚠ {formError}</Text>
+        </View>
+      )}
 
       {/* Formulaire de création */}
       {showForm && (
@@ -249,7 +313,7 @@ export default function UtilisateursScreen() {
                     </View>
                   </View>
 
-                  {/* Rôle actuel */}
+                  {/* Rôle + boutons */}
                   <View style={styles.roleRow}>
                     <View style={[styles.roleBadge, { backgroundColor: roleColor + '15', borderColor: roleColor + '40' }]}>
                       <Text style={[styles.roleBadgeText, { color: roleColor }]}>
@@ -257,40 +321,41 @@ export default function UtilisateursScreen() {
                       </Text>
                     </View>
 
-                    {/* Boutons action */}
                     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                        {!isUserAdmin && (
-                          <Pressable
-                            onPress={() => handleChangeRole(user.id, user.name, appRole)}
-                            disabled={updateRoleMutation.isPending}
-                            style={({ pressed }) => [
-                              styles.changeRoleBtn,
-                              { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
-                            ]}
-                          >
-                            {updateRoleMutation.isPending ? (
-                              <ActivityIndicator size="small" color={colors.primary} />
-                            ) : (
-                              <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
-                                → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
-                              </Text>
-                            )}
-                          </Pressable>
-                        )}
+                      {!isUserAdmin && (
                         <Pressable
-                          onPress={() => handleDeleteUser(user.id, user.name)}
-                          disabled={deleteUserMutation.isPending}
+                          onPress={() => handleChangeRole(user.id, user.name, appRole)}
+                          disabled={updateRoleMutation.isPending}
                           style={({ pressed }) => [
                             styles.changeRoleBtn,
-                            { borderColor: colors.error, opacity: pressed ? 0.7 : 1 }
+                            { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
                           ]}
                         >
-                          <Text style={[styles.changeRoleBtnText, { color: colors.error }]}>Supprimer</Text>
+                          {updateRoleMutation.isPending ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
+                              → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
+                            </Text>
+                          )}
                         </Pressable>
-                      </View>
+                      )}
+                      <Pressable
+                        onPress={() => handleDeleteUser(user.id, user.name)}
+                        disabled={deleteUserMutation.isPending}
+                        style={({ pressed }) => [
+                          styles.changeRoleBtn,
+                          { borderColor: colors.error, opacity: pressed ? 0.7 : 1 }
+                        ]}
+                      >
+                        {deleteUserMutation.isPending
+                          ? <ActivityIndicator size="small" color={colors.error} />
+                          : <Text style={[styles.changeRoleBtnText, { color: colors.error }]}>Supprimer</Text>
+                        }
+                      </Pressable>
+                    </View>
                   </View>
 
-                  {/* Login method */}
                   {user.loginMethod && (
                     <Text style={[styles.loginMethod, { color: colors.muted }]}>
                       Connexion via : {user.loginMethod}
@@ -360,6 +425,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   infoBannerText: { fontSize: 13, lineHeight: 18 },
+  successBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, padding: 12, borderWidth: 1 },
+  successBannerText: { fontSize: 14, fontWeight: '600' },
+  errorBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, padding: 12, borderWidth: 1 },
+  errorBannerText: { fontSize: 14, fontWeight: '600' },
   scrollContent: { padding: 16, gap: 12, paddingBottom: 32 },
   center: {
     flex: 1,
@@ -398,7 +467,7 @@ const styles = StyleSheet.create({
   adminBadgeText: { fontSize: 11, fontWeight: '700' },
   userEmail: { fontSize: 13 },
   userLastSeen: { fontSize: 12 },
-  roleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  roleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   roleBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
   roleBadgeText: { fontSize: 13, fontWeight: '600' },
   changeRoleBtn: {
@@ -418,4 +487,30 @@ const styles = StyleSheet.create({
   legendText: { flex: 1, gap: 2 },
   legendRoleName: { fontSize: 14, fontWeight: '600' },
   legendRoleDesc: { fontSize: 13, lineHeight: 18 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    gap: 12,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700' },
+  modalMessage: { fontSize: 14, lineHeight: 20 },
+  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  modalBtnText: { fontSize: 15, fontWeight: '600' },
 });
