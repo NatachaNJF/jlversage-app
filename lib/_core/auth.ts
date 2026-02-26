@@ -9,6 +9,9 @@ export type User = {
   email: string | null;
   loginMethod: string | null;
   lastSignedIn: Date;
+  // Rôles pour le contrôle d'accès
+  role?: string | null;      // rôle système : 'admin' | 'user'
+  appRole?: string | null;   // rôle applicatif : 'gestionnaire' | 'prepose'
 };
 
 export async function getSessionToken(): Promise<string | null> {

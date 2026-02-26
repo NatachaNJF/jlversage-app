@@ -278,7 +278,9 @@ class SDKServer {
       lastSignedIn: signedInAt,
     });
 
-    return user;
+    // Recharger l'utilisateur depuis la DB pour avoir les valeurs à jour (appRole, role)
+    const freshUser = await db.getUserByOpenId(user.openId);
+    return freshUser ?? user;
   }
 }
 

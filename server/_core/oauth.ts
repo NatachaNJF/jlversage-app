@@ -58,6 +58,9 @@ function buildUserResponse(
     email: user?.email ?? null,
     loginMethod: user?.loginMethod ?? null,
     lastSignedIn: (user?.lastSignedIn ?? new Date()).toISOString(),
+    // Rôles exposés au client pour le contrôle d'accès
+    role: (user as any)?.role ?? null,
+    appRole: (user as any)?.appRole ?? null,
   };
 }
 
