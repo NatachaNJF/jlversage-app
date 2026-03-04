@@ -94,7 +94,7 @@
 - [x] Permettre de supprimer son propre compte de test (sauf le dernier admin)
 
 ## Correction bouton Supprimer utilisateur
-- [ ] Corriger le bouton Supprimer qui ne fait rien (Pressable + Alert + mutation)
+- [x] Corriger le bouton Supprimer qui ne fait rien (Pressable + Alert + mutation)
 
 ## Migration v8 — Auth email/mot de passe locale (sans OAuth Manus)
 
