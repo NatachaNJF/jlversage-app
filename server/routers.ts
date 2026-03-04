@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { sdk } from "./_core/sdk";
 import * as db from "./db";
 import {
   emailAutorisation,
@@ -50,6 +52,36 @@ export const appRouter = router({
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        // Chercher l'utilisateur par email
+        const user = await db.getUserByEmail(input.email);
+        if (!user || !user.passwordHash) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou mot de passe incorrect" });
+        }
+        // Vérifier le mot de passe
+        const valid = await bcrypt.compare(input.password, user.passwordHash);
+        if (!valid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou mot de passe incorrect" });
+        }
+        // Créer la session JWT
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+        return { success: true, mustChangePassword: user.mustChangePassword ?? false };
+      }),
+    changePassword: protectedProcedure
+      .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8, "Minimum 8 caractères") }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user || !user.passwordHash) throw new TRPCError({ code: "BAD_REQUEST", message: "Compte sans mot de passe" });
+        const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Mot de passe actuel incorrect" });
+        const hash = await bcrypt.hash(input.newPassword, 12);
+        await db.updateUserPassword(ctx.user.id, hash, false);
+        return { success: true };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -77,6 +109,7 @@ export const appRouter = router({
       .input(z.object({
         name: z.string().min(1, "Nom requis"),
         email: z.string().email("Email invalide"),
+        password: z.string().min(8, "Minimum 8 caractères"),
         appRole: z.enum(["gestionnaire", "prepose"]),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -86,28 +119,36 @@ export const appRouter = router({
         // Vérifier si l'email existe déjà
         const existing = await db.getUserByEmail(input.email);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "Un utilisateur avec cet email existe déjà" });
-        // Créer l'utilisateur avec un openId fictif basé sur l'email
-        const openId = `manual_${input.email.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`;
-        await db.upsertUser({
+        // Hasher le mot de passe
+        const passwordHash = await bcrypt.hash(input.password, 12);
+        // Créer l'utilisateur avec un openId local
+        const openId = `local:${input.email.toLowerCase().replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`;
+        await db.createLocalUser({
           openId,
           name: input.name,
           email: input.email,
-          loginMethod: "manual",
-          lastSignedIn: new Date(),
+          passwordHash,
+          appRole: input.appRole,
+          role: "user",
+          mustChangePassword: true,
         });
-        // Récupérer l'utilisateur créé pour mettre à jour son appRole
-        const newUser = await db.getUserByEmail(input.email);
-        if (newUser) {
-          await db.updateUserAppRole(newUser.id, input.appRole);
-          // Envoyer un email de bienvenue
-          try {
-            const emailOpts = emailNouvelUtilisateurCreation(input.email, input.name, input.appRole);
-            await sendEmail(emailOpts);
-            console.log("[Users] Email de bienvenue envoyé à", input.email);
-          } catch (err) {
-            console.warn("[Users] Email de bienvenue non envoyé:", err);
-          }
+        // Envoyer un email de bienvenue
+        try {
+          const emailOpts = emailNouvelUtilisateurCreation(input.email, input.name, input.appRole);
+          await sendEmail(emailOpts);
+        } catch (err) {
+          console.warn("[Users] Email de bienvenue non envoyé:", err);
         }
+        return { success: true };
+      }),
+    resetPassword: protectedProcedure
+      .input(z.object({ userId: z.number(), newPassword: z.string().min(8, "Minimum 8 caractères") }))
+      .mutation(async ({ ctx, input }) => {
+        const isAdmin = ctx.user.role === "admin";
+        const isGestionnaire = ctx.user.appRole === "gestionnaire";
+        if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
+        const hash = await bcrypt.hash(input.newPassword, 12);
+        await db.updateUserPassword(input.userId, hash, true);
         return { success: true };
       }),
     delete: protectedProcedure

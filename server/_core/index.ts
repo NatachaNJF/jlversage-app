@@ -2,10 +2,12 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import bcrypt from "bcryptjs";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import * as db from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -24,6 +26,32 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
     }
   }
   throw new Error(`No available port found starting from ${startPort}`);
+}
+
+async function seedAdminUser() {
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@jlversage.be";
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "JLVersage2026!";
+  try {
+    const existing = await db.getUserByEmail(ADMIN_EMAIL);
+    if (!existing) {
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+      const openId = `local:admin_${Date.now()}`;
+      await db.createLocalUser({
+        openId,
+        name: "Administrateur JL Versage",
+        email: ADMIN_EMAIL,
+        passwordHash,
+        appRole: "gestionnaire",
+        role: "admin",
+        mustChangePassword: false,
+      });
+      console.log(`[Admin] Compte administrateur créé : ${ADMIN_EMAIL}`);
+      console.log(`[Admin] Mot de passe par défaut : ${ADMIN_PASSWORD}`);
+      console.log(`[Admin] IMPORTANT : Changez ce mot de passe après la première connexion !`);
+    }
+  } catch (err) {
+    console.error("[Admin] Erreur lors de la création du compte admin:", err);
+  }
 }
 
 async function startServer() {
@@ -75,8 +103,10 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`[api] server listening on port ${port}`);
+    // Créer le compte admin par défaut si nécessaire
+    await seedAdminUser();
   });
 }
 

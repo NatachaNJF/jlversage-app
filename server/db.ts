@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, lte, count } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import {
   chantiers,
   incidents,
@@ -34,13 +34,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
-  // Vérifier si l'utilisateur existe déjà
   const existing = await getUserByOpenId(user.openId);
-
-  // Si l'utilisateur existe déjà et est admin, NE JAMAIS écraser son rôle
   const isExistingAdmin = existing?.role === "admin";
-
-  // Si aucun utilisateur n'existe encore dans la base, ce premier utilisateur devient admin
   const isFirstUser = !existing && (await countUsers()) === 0;
 
   const values: InsertUser = { openId: user.openId };
@@ -59,25 +54,23 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     updateSet.lastSignedIn = user.lastSignedIn;
   }
 
-  // Attribution du rôle système :
-  // - Si l'utilisateur est déjà admin → ne pas toucher au rôle
-  // - Si c'est le premier utilisateur → admin automatiquement
-  // - Sinon → rôle "user" par défaut
   if (!isExistingAdmin) {
     if (isFirstUser || user.openId === ENV.ownerOpenId) {
       values.role = "admin";
-      // Ne pas mettre dans updateSet pour ne pas écraser si déjà admin
     } else if (!existing) {
       values.role = "user";
     }
-    // Si l'utilisateur existe et n'est pas admin, ne pas changer son rôle système
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 
-  // Notifier l'admin par email si c'est un nouvel utilisateur (pas le premier = admin)
+  if (existing) {
+    await db.update(users).set(updateSet as Partial<InsertUser>).where(eq(users.openId, user.openId));
+  } else {
+    await db.insert(users).values(values);
+  }
+
   if (!existing && !isFirstUser) {
     try {
       const adminUsers = await db.select().from(users).where(eq(users.role, "admin")).limit(1);
@@ -85,7 +78,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       if (admin?.email) {
         const emailOpts = emailNouvelUtilisateur(admin.email, user.name ?? null, user.email ?? null);
         await sendEmail(emailOpts);
-        console.log(`[DB] Email de notification envoyé à l'admin (${admin.email}) pour le nouvel utilisateur`);
       }
     } catch (err) {
       console.warn("[DB] Impossible d'envoyer l'email de notification admin:", err);
@@ -114,6 +106,13 @@ export async function getUserById(id: number) {
   return result[0];
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
+}
+
 export async function getAllUsers() {
   const db = await getDb();
   if (!db) return [];
@@ -126,11 +125,41 @@ export async function updateUserAppRole(userId: number, appRole: "gestionnaire" 
   await db.update(users).set({ appRole }).where(eq(users.id, userId));
 }
 
-export async function getUserByEmail(email: string) {
+export async function updateUserPassword(userId: number, passwordHash: string, mustChangePassword = false) {
   const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  return result[0];
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ passwordHash, mustChangePassword }).where(eq(users.id, userId));
+}
+
+export async function createLocalUser(data: {
+  openId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  appRole: "gestionnaire" | "prepose";
+  role?: "user" | "admin";
+  mustChangePassword?: boolean;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(users).values({
+    openId: data.openId,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.passwordHash,
+    appRole: data.appRole,
+    role: data.role ?? "user",
+    mustChangePassword: data.mustChangePassword ?? true,
+    loginMethod: "local",
+    lastSignedIn: new Date(),
+  }).returning({ id: users.id });
+  return result[0].id;
+}
+
+export async function updateUser(userId: number, data: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set(data).where(eq(users.id, userId));
 }
 
 export async function deleteUser(userId: number) {
@@ -157,8 +186,8 @@ export async function getChantierById(id: number) {
 export async function createChantier(data: InsertChantier) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(chantiers).values(data);
-  return (result[0] as any).insertId as number;
+  const result = await db.insert(chantiers).values(data).returning({ id: chantiers.id });
+  return result[0].id;
 }
 
 export async function updateChantier(id: number, data: Partial<InsertChantier>) {
@@ -196,8 +225,8 @@ export async function getPassagesByPeriod(dateDebut: string, dateFin: string) {
 export async function createPassage(data: InsertPassage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(passages).values(data);
-  const id = (result[0] as any).insertId as number;
+  const result = await db.insert(passages).values(data).returning({ id: passages.id });
+  const id = result[0].id;
   // Mettre à jour les tonnages du chantier
   const chantier = await getChantierById(data.chantierId);
   if (chantier) {
@@ -237,8 +266,8 @@ export async function getIncidentById(id: number) {
 export async function createIncident(data: InsertIncident) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(incidents).values(data);
-  return (result[0] as any).insertId as number;
+  const result = await db.insert(incidents).values(data).returning({ id: incidents.id });
+  return result[0].id;
 }
 
 export async function updateIncident(id: number, data: Partial<InsertIncident>) {

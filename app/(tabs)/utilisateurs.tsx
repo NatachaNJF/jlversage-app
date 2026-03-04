@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, RefreshControl, TextInput, Modal, Platform } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
@@ -17,7 +17,6 @@ const ROLE_COLORS: Record<string, string> = {
 
 type AppRole = 'gestionnaire' | 'prepose';
 
-// Confirmation cross-platform (web + mobile)
 function useConfirm() {
   const [state, setState] = useState<{
     visible: boolean;
@@ -30,7 +29,6 @@ function useConfirm() {
 
   const confirm = (title: string, message: string, onConfirm: () => void, opts?: { confirmLabel?: string; destructive?: boolean }) => {
     if (Platform.OS === 'web') {
-      // Sur web, utiliser window.confirm natif du navigateur
       if (window.confirm(`${title}\n\n${message}`)) {
         onConfirm();
       }
@@ -51,9 +49,17 @@ export default function UtilisateursScreen() {
   const [showForm, setShowForm] = useState(false);
   const [newNom, setNewNom] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('prepose');
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Reset password modal
+  const [resetUserId, setResetUserId] = useState<number | null>(null);
+  const [resetUserName, setResetUserName] = useState<string>('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+
   const { confirm, confirmState, dismiss, handleConfirm } = useConfirm();
 
   const usersQuery = trpc.users.list.useQuery(undefined, {
@@ -69,8 +75,8 @@ export default function UtilisateursScreen() {
     onSuccess: () => {
       usersQuery.refetch();
       setShowForm(false);
-      setNewNom(''); setNewEmail(''); setNewRole('prepose'); setFormError(null);
-      setSuccessMsg('Utilisateur créé et email d\'invitation envoyé.');
+      setNewNom(''); setNewEmail(''); setNewPassword(''); setNewRole('prepose'); setFormError(null);
+      setSuccessMsg('Utilisateur créé avec succès.');
       setTimeout(() => setSuccessMsg(null), 4000);
     },
     onError: (err) => { setFormError(err.message); },
@@ -85,12 +91,24 @@ export default function UtilisateursScreen() {
     onError: (err) => { setFormError(err.message || 'Impossible de supprimer l\'utilisateur.'); setTimeout(() => setFormError(null), 4000); },
   });
 
+  const resetPasswordMutation = trpc.users.resetPassword.useMutation({
+    onSuccess: () => {
+      setResetUserId(null);
+      setResetNewPassword('');
+      setResetError(null);
+      setSuccessMsg('Mot de passe réinitialisé. L\'utilisateur devra le changer à la prochaine connexion.');
+      setTimeout(() => setSuccessMsg(null), 5000);
+    },
+    onError: (err) => { setResetError(err.message); },
+  });
+
   const handleCreate = () => {
     setFormError(null);
     if (!newNom.trim()) { setFormError('Le nom est requis.'); return; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail.trim())) { setFormError('Email invalide.'); return; }
-    createUserMutation.mutate({ name: newNom.trim(), email: newEmail.trim(), appRole: newRole });
+    if (newPassword.length < 8) { setFormError('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    createUserMutation.mutate({ name: newNom.trim(), email: newEmail.trim(), password: newPassword, appRole: newRole });
   };
 
   const handleDeleteUser = (userId: number, userName: string | null) => {
@@ -112,7 +130,12 @@ export default function UtilisateursScreen() {
     );
   }
 
-  // Rediriger si pas gestionnaire ni admin
+  function handleResetPassword() {
+    if (!resetUserId) return;
+    if (resetNewPassword.length < 8) { setResetError('Minimum 8 caractères.'); return; }
+    resetPasswordMutation.mutate({ userId: resetUserId, newPassword: resetNewPassword });
+  }
+
   if (!isAdmin && !isGestionnaire) {
     return (
       <ScreenContainer>
@@ -129,17 +152,14 @@ export default function UtilisateursScreen() {
 
   return (
     <ScreenContainer>
-      {/* Modal de confirmation (mobile uniquement — web utilise window.confirm) */}
+      {/* Modal confirmation */}
       <Modal visible={confirmState.visible} transparent animationType="fade" onRequestClose={dismiss}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{confirmState.title}</Text>
             <Text style={[styles.modalMessage, { color: colors.muted }]}>{confirmState.message}</Text>
             <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalBtn, { borderColor: colors.border }]}
-                onPress={dismiss}
-              >
+              <Pressable style={[styles.modalBtn, { borderColor: colors.border }]} onPress={dismiss}>
                 <Text style={[styles.modalBtnText, { color: colors.muted }]}>Annuler</Text>
               </Pressable>
               <Pressable
@@ -153,8 +173,45 @@ export default function UtilisateursScreen() {
         </View>
       </Modal>
 
+      {/* Modal reset password */}
+      <Modal visible={resetUserId !== null} transparent animationType="fade" onRequestClose={() => { setResetUserId(null); setResetNewPassword(''); setResetError(null); }}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Réinitialiser le mot de passe</Text>
+            <Text style={[styles.modalMessage, { color: colors.muted }]}>
+              Nouveau mot de passe pour {resetUserName}. L'utilisateur devra le changer à la prochaine connexion.
+            </Text>
+            <TextInput
+              style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, marginTop: 8 }]}
+              value={resetNewPassword}
+              onChangeText={setResetNewPassword}
+              placeholder="Nouveau mot de passe (min. 8 car.)"
+              placeholderTextColor={colors.muted}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            {resetError && <Text style={{ color: colors.error, fontSize: 13, marginTop: 6 }}>{resetError}</Text>}
+            <View style={[styles.modalButtons, { marginTop: 12 }]}>
+              <Pressable style={[styles.modalBtn, { borderColor: colors.border }]} onPress={() => { setResetUserId(null); setResetNewPassword(''); setResetError(null); }}>
+                <Text style={[styles.modalBtnText, { color: colors.muted }]}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.primary, borderColor: 'transparent', opacity: resetPasswordMutation.isPending ? 0.6 : 1 }]}
+                onPress={handleResetPassword}
+                disabled={resetPasswordMutation.isPending}
+              >
+                {resetPasswordMutation.isPending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={[styles.modalBtnText, { color: '#fff' }]}>Confirmer</Text>
+                }
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Gestion des utilisateurs</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Utilisateurs</Text>
         <Pressable
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
           onPress={() => { setShowForm(!showForm); setFormError(null); }}
@@ -163,7 +220,6 @@ export default function UtilisateursScreen() {
         </Pressable>
       </View>
 
-      {/* Messages de succès/erreur globaux */}
       {successMsg && (
         <View style={[styles.successBanner, { backgroundColor: colors.success + '18', borderColor: colors.success }]}>
           <Text style={[styles.successBannerText, { color: colors.success }]}>✓ {successMsg}</Text>
@@ -199,6 +255,18 @@ export default function UtilisateursScreen() {
             placeholderTextColor={colors.muted}
             keyboardType="email-address"
             autoCapitalize="none"
+            returnKeyType="next"
+          />
+
+          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Mot de passe temporaire * (min. 8 car.)</Text>
+          <TextInput
+            style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Mot de passe temporaire"
+            placeholderTextColor={colors.muted}
+            secureTextEntry
+            autoCapitalize="none"
             returnKeyType="done"
           />
 
@@ -226,20 +294,19 @@ export default function UtilisateursScreen() {
           >
             {createUserMutation.isPending
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.createBtnText}>Créer et envoyer l'invitation</Text>
+              : <Text style={styles.createBtnText}>Créer l'utilisateur</Text>
             }
           </Pressable>
 
           <Text style={[styles.formHint, { color: colors.muted }]}>
-            Un email d'invitation sera envoyé automatiquement. L'utilisateur devra se connecter avec ce compte email via Manus.
+            L'utilisateur se connectera avec son email et ce mot de passe temporaire. Il sera invité à le changer à la première connexion.
           </Text>
         </View>
       )}
 
-      {/* Info admin */}
       <View style={[styles.infoBanner, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '40' }]}>
         <Text style={[styles.infoBannerText, { color: colors.primary }]}>
-          Attribuez un rôle à chaque utilisateur. Les permissions sont appliquées côté serveur.
+          Créez les comptes et attribuez les rôles. Les utilisateurs se connectent avec leur email et mot de passe.
         </Text>
       </View>
 
@@ -256,20 +323,20 @@ export default function UtilisateursScreen() {
         {usersQuery.isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.muted }]}>Chargement des utilisateurs...</Text>
+            <Text style={[styles.loadingText, { color: colors.muted }]}>Chargement...</Text>
           </View>
         ) : users.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>👥</Text>
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Aucun utilisateur trouvé</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>Aucun utilisateur</Text>
             <Text style={[styles.emptySubText, { color: colors.muted }]}>
-              Les utilisateurs apparaissent ici après leur première connexion.
+              Créez des comptes avec le bouton "+ Ajouter".
             </Text>
           </View>
         ) : (
           <>
             <Text style={[styles.sectionTitle, { color: colors.muted }]}>
-              {users.length} utilisateur{users.length > 1 ? 's' : ''} enregistré{users.length > 1 ? 's' : ''}
+              {users.length} utilisateur{users.length > 1 ? 's' : ''}
             </Text>
 
             {users.map((user: any) => {
@@ -286,7 +353,6 @@ export default function UtilisateursScreen() {
                   key={user.id}
                   style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 >
-                  {/* Avatar + infos */}
                   <View style={styles.userRow}>
                     <View style={[styles.avatar, { backgroundColor: roleColor + '20' }]}>
                       <Text style={[styles.avatarText, { color: roleColor }]}>
@@ -313,7 +379,6 @@ export default function UtilisateursScreen() {
                     </View>
                   </View>
 
-                  {/* Rôle + boutons */}
                   <View style={styles.roleRow}>
                     <View style={[styles.roleBadge, { backgroundColor: roleColor + '15', borderColor: roleColor + '40' }]}>
                       <Text style={[styles.roleBadgeText, { color: roleColor }]}>
@@ -327,38 +392,42 @@ export default function UtilisateursScreen() {
                           onPress={() => handleChangeRole(user.id, user.name, appRole)}
                           disabled={updateRoleMutation.isPending}
                           style={({ pressed }) => [
-                            styles.changeRoleBtn,
+                            styles.actionBtn,
                             { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }
                           ]}
                         >
-                          {updateRoleMutation.isPending ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
-                          ) : (
-                            <Text style={[styles.changeRoleBtnText, { color: colors.primary }]}>
-                              → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
-                            </Text>
-                          )}
+                          <Text style={[styles.actionBtnText, { color: colors.primary }]}>
+                            → {appRole === 'gestionnaire' ? 'Préposé' : 'Gestionnaire'}
+                          </Text>
+                        </Pressable>
+                      )}
+                      {user.loginMethod === 'local' && (
+                        <Pressable
+                          onPress={() => { setResetUserId(user.id); setResetUserName(user.name || 'cet utilisateur'); setResetNewPassword(''); setResetError(null); }}
+                          style={({ pressed }) => [
+                            styles.actionBtn,
+                            { borderColor: colors.warning, opacity: pressed ? 0.7 : 1 }
+                          ]}
+                        >
+                          <Text style={[styles.actionBtnText, { color: colors.warning }]}>🔑 MDP</Text>
                         </Pressable>
                       )}
                       <Pressable
                         onPress={() => handleDeleteUser(user.id, user.name)}
                         disabled={deleteUserMutation.isPending}
                         style={({ pressed }) => [
-                          styles.changeRoleBtn,
+                          styles.actionBtn,
                           { borderColor: colors.error, opacity: pressed ? 0.7 : 1 }
                         ]}
                       >
-                        {deleteUserMutation.isPending
-                          ? <ActivityIndicator size="small" color={colors.error} />
-                          : <Text style={[styles.changeRoleBtnText, { color: colors.error }]}>Supprimer</Text>
-                        }
+                        <Text style={[styles.actionBtnText, { color: colors.error }]}>Supprimer</Text>
                       </Pressable>
                     </View>
                   </View>
 
                   {user.loginMethod && (
                     <Text style={[styles.loginMethod, { color: colors.muted }]}>
-                      Connexion via : {user.loginMethod}
+                      Connexion : {user.loginMethod === 'local' ? 'Email/Mot de passe' : user.loginMethod}
                     </Text>
                   )}
                 </View>
@@ -367,7 +436,6 @@ export default function UtilisateursScreen() {
           </>
         )}
 
-        {/* Légende des rôles */}
         <View style={[styles.legendCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.legendTitle, { color: colors.foreground }]}>Rôles disponibles</Text>
           <View style={styles.legendRow}>
@@ -430,13 +498,7 @@ const styles = StyleSheet.create({
   errorBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, padding: 12, borderWidth: 1 },
   errorBannerText: { fontSize: 14, fontWeight: '600' },
   scrollContent: { padding: 16, gap: 12, paddingBottom: 32 },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    gap: 12,
-  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   loadingText: { fontSize: 14 },
   noAccessText: { fontSize: 16, textAlign: 'center', lineHeight: 24 },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
@@ -444,21 +506,9 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, fontWeight: '600' },
   emptySubText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  userCard: {
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
+  userCard: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 10 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarText: { fontSize: 20, fontWeight: '700' },
   userInfo: { flex: 1, gap: 3 },
   userNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -470,15 +520,8 @@ const styles = StyleSheet.create({
   roleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   roleBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
   roleBadgeText: { fontSize: 13, fontWeight: '600' },
-  changeRoleBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  changeRoleBtnText: { fontSize: 13, fontWeight: '600' },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, minWidth: 80, alignItems: 'center' },
+  actionBtnText: { fontSize: 13, fontWeight: '600' },
   loginMethod: { fontSize: 12 },
   legendCard: { borderRadius: 14, padding: 14, borderWidth: 1, gap: 10 },
   legendTitle: { fontSize: 14, fontWeight: '700' },
@@ -487,30 +530,11 @@ const styles = StyleSheet.create({
   legendText: { flex: 1, gap: 2 },
   legendRoleName: { fontSize: 14, fontWeight: '600' },
   legendRoleDesc: { fontSize: 13, lineHeight: 18 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalBox: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    gap: 12,
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalBox: { width: '100%', maxWidth: 360, borderRadius: 16, padding: 24, borderWidth: 1, gap: 12 },
   modalTitle: { fontSize: 17, fontWeight: '700' },
   modalMessage: { fontSize: 14, lineHeight: 20 },
   modalButtons: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
   modalBtnText: { fontSize: 15, fontWeight: '600' },
 });

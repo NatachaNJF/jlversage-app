@@ -251,8 +251,12 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
+    // For local auth users (openId starts with 'local:'), don't try Manus OAuth
     if (!user) {
+      if (sessionUserId.startsWith("local:")) {
+        throw ForbiddenError("Local user not found");
+      }
+      // Try to sync from Manus OAuth server
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
         await db.upsertUser({
@@ -273,10 +277,15 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt,
-    });
+    // Pour les utilisateurs locaux, mettre à jour lastSignedIn directement
+    if (user.loginMethod === "local") {
+      await db.updateUser(user.id, { lastSignedIn: signedInAt });
+    } else {
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt,
+      });
+    }
 
     // Recharger l'utilisateur depuis la DB pour avoir les valeurs à jour (appRole, role)
     const freshUser = await db.getUserByOpenId(user.openId);
