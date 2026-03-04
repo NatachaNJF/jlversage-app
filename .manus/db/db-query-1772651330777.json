@@ -1,0 +1,24 @@
+{
+  "query": "SELECT id, \"localisationChantier\", statut, \"createdAt\", \"societeNom\" FROM chantiers ORDER BY \"createdAt\";",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute SELECT id, \"localisationChantier\", statut, \"createdAt\", \"societeNom\" FROM chantiers ORDER BY \"createdAt\";",
+  "rows": [
+    {
+      "id": "1",
+      "localisationChantier": "localisationChantier",
+      "statut": "documents_demandes",
+      "createdAt": "createdAt",
+      "societeNom": "societeNom"
+    },
+    {
+      "id": "2",
+      "localisationChantier": "localisationChantier",
+      "statut": "demande",
+      "createdAt": "createdAt",
+      "societeNom": "societeNom"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlocalisationChantier\tstatut\tcreatedAt\tsocieteNom\n1\tlocalisationChantier\tdocuments_demandes\tcreatedAt\tsocieteNom\n2\tlocalisationChantier\tdemande\tcreatedAt\tsocieteNom\n",
+  "stderr": "",
+  "execution_time_ms": 156
+}

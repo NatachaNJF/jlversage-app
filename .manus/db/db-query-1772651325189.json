@@ -1,0 +1,22 @@
+{
+  "query": "-- Voir ce qui est dans la base avant de vider\nSELECT id, \"localisationChantier\", statut, \"createdAt\" FROM chantiers ORDER BY \"createdAt\";\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute -- Voir ce qui est dans la base avant de vider\nSELECT id, \"localisationChantier\", statut, \"createdAt\" FROM chantiers ORDER BY \"createdAt\";\n",
+  "rows": [
+    {
+      "id": "1",
+      "localisationChantier": "localisationChantier",
+      "statut": "documents_demandes",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "2",
+      "localisationChantier": "localisationChantier",
+      "statut": "demande",
+      "createdAt": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlocalisationChantier\tstatut\tcreatedAt\n1\tlocalisationChantier\tdocuments_demandes\tcreatedAt\n2\tlocalisationChantier\tdemande\tcreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 944
+}
