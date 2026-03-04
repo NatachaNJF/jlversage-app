@@ -204,7 +204,12 @@ export const appRouter = router({
         return { id, refused: false };
       }),
     update: gestionnaireOnly
-      .input(z.object({ id: z.number(), data: chantierBaseSchema.partial() }))
+      .input(z.object({
+        id: z.number(),
+        data: chantierBaseSchema.partial().extend({
+          statut: z.enum(["demande", "analyse", "offre_envoyee", "documents_demandes", "validation_admin", "autorise", "en_cours", "volume_atteint", "cloture", "refuse"]).optional(),
+        })
+      }))
       .mutation(async ({ input }) => {
         await db.updateChantier(input.id, input.data);
         return { success: true };

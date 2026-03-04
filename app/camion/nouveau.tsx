@@ -8,8 +8,8 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useApp } from "@/lib/app-context";
 import { useColors } from "@/hooks/use-colors";
+import { trpc } from "@/lib/trpc";
 import { MotifRefus, MOTIF_REFUS_LABELS } from "@/types";
 
 const ANOMALIES_VISUELLES: { id: MotifRefus; label: string; emoji: string }[] = [
@@ -24,12 +24,20 @@ const ANOMALIES_VISUELLES: { id: MotifRefus; label: string; emoji: string }[] = 
 export default function NouveauCamion() {
   const colors = useColors();
   const router = useRouter();
-  const { chantiers, ajouterPassage, ajouterIncident, profil } = useApp();
+  const utils = trpc.useUtils();
+  const chantiersQuery = trpc.chantiers.list.useQuery();
+  const chantiers = chantiersQuery.data || [];
+  const createPassageMutation = trpc.passages.create.useMutation({
+    onSuccess: () => {
+      utils.passages.invalidate();
+      utils.chantiers.invalidate();
+    },
+  });
 
   const [etape, setEtape] = useState(1);
 
   // Étape 1 — Contrôle administratif
-  const [chantierId, setChantierId] = useState('');
+  const [chantierId, setChantierId] = useState<number | null>(null);
   const [plaque, setPlaque] = useState('');
   const [transporteur, setTransporteur] = useState('');
   const [refChantier, setRefChantier] = useState('');
@@ -60,6 +68,14 @@ export default function NouveauCamion() {
     () => chantiers.find(c => c.id === chantierId),
     [chantiers, chantierId]
   );
+
+  const getNowStrings = () => {
+    const now = new Date();
+    return {
+      date: now.toISOString().split('T')[0],
+      heure: now.toTimeString().slice(0, 5),
+    };
+  };
 
   const adminOk = bonWalterreOk && referenceOk && plaqueOk && correspondanceOk;
   const adminRefus = bonWalterreOk === false || referenceOk === false || plaqueOk === false || correspondanceOk === false;
@@ -141,50 +157,36 @@ export default function NouveauCamion() {
   const handleSaveRefus = async (type: 'admin' | 'visuel') => {
     setSaving(true);
     try {
+      const now = new Date();
       const motif: MotifRefus = type === 'admin'
         ? (bonWalterreOk === false ? 'bon_walterre_manquant' : referenceOk === false ? 'reference_incorrecte' : 'chantier_non_autorise')
         : (anomaliesSelectionnees[0] || 'autre');
 
-      const now = new Date();
-      await ajouterPassage({
-        chantierId: chantierId || 'inconnu',
-        chantierNom: chantierSelectionne?.societe.nom || 'Chantier inconnu',
-        date: now.toISOString().split('T')[0],
-        heure: now.toTimeString().slice(0, 5),
+      const { date, heure } = getNowStrings();
+      await createPassageMutation.mutateAsync({
+        chantierId: chantierId!,
+        chantierNom: chantierSelectionne?.societeNom || 'Chantier inconnu',
+        date,
+        heure,
         plaque: plaque.trim().toUpperCase(),
         transporteur: transporteur.trim(),
         referenceChantier: refChantier.trim(),
-        tonnage: 0,
+        tonnage: 0.001,
         accepte: false,
         motifRefus: motif,
         motifRefusDetail: type === 'visuel' ? anomaliesSelectionnees.map(a => MOTIF_REFUS_LABELS[a]).join(', ') : undefined,
-        photoUri: photoUri || undefined,
         bonWalterreOk: bonWalterreOk || false,
         referenceOk: referenceOk || false,
         plaqueOk: plaqueOk || false,
         correspondanceOk: correspondanceOk || false,
         controleVisuelOk: type === 'visuel' ? false : undefined,
         anomalies: type === 'visuel' ? anomaliesSelectionnees : undefined,
-        operateurNom: profil.nom,
       });
-
-      if (chantierId) {
-        await ajouterIncident({
-          type: 'camion_refuse',
-          chantierId,
-          chantierNom: chantierSelectionne?.societe.nom || '',
-          date: now.toISOString(),
-          description: `Camion ${plaque} refusé — ${MOTIF_REFUS_LABELS[motif]}`,
-          photoUri: photoUri || undefined,
-          clientInforme: false,
-          resolu: false,
-        });
-      }
 
       Alert.alert('Refus enregistré', 'Le refus a été enregistré dans le registre.');
       router.back();
-    } catch (e) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer.');
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message || 'Impossible d\'enregistrer.');
     } finally {
       setSaving(false);
     }
@@ -197,43 +199,28 @@ export default function NouveauCamion() {
     }
     setSaving(true);
     try {
-      const now = new Date();
-      await ajouterPassage({
-        chantierId,
-        chantierNom: chantierSelectionne?.societe.nom || '',
-        date: now.toISOString().split('T')[0],
-        heure: now.toTimeString().slice(0, 5),
+      const { date, heure } = getNowStrings();
+      await createPassageMutation.mutateAsync({
+        chantierId: chantierId!,
+        chantierNom: chantierSelectionne?.societeNom || 'Chantier inconnu',
+        date,
+        heure,
         plaque: plaque.trim().toUpperCase(),
         transporteur: transporteur.trim(),
         referenceChantier: refChantier.trim(),
         tonnage: parseFloat(tonnage),
         accepte: true,
-        photoUri: photoUri || undefined,
         bonWalterreOk: true,
         referenceOk: true,
         plaqueOk: true,
         correspondanceOk: true,
         controleVisuelOk: true,
-        operateurNom: profil.nom,
       });
-
-      // Vérifier si volume atteint
-      const chantier = chantierSelectionne;
-      if (chantier) {
-        const nouveauTonnage = (chantier.tonnageAccepte || 0) + parseFloat(tonnage);
-        const volumeRef = chantier.volumeDeclare || chantier.volumeEstime;
-        if (nouveauTonnage >= volumeRef) {
-          Alert.alert(
-            '⚠ Volume atteint',
-            `Le volume déclaré de ${volumeRef} T est atteint pour ce chantier. Le chantier sera bloqué.`,
-          );
-        }
-      }
 
       Alert.alert('Camion accepté', 'L\'arrivée a été enregistrée dans le registre.');
       router.back();
-    } catch (e) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer.');
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message || 'Impossible d\'enregistrer.');
     } finally {
       setSaving(false);
     }
@@ -313,7 +300,7 @@ export default function NouveauCamion() {
                       activeOpacity={0.75}
                     >
                       <View style={styles.chantierOptionLeft}>
-                        <Text style={[styles.chantierOptionNom, { color: colors.foreground }]}>{c.societe.nom}</Text>
+                        <Text style={[styles.chantierOptionNom, { color: colors.foreground }]}>{c.societeNom}</Text>
                         <Text style={[styles.chantierOptionRef, { color: colors.muted }]}>{c.referenceWalterre}</Text>
                       </View>
                       {chantierId === c.id && <IconSymbol name="checkmark.circle.fill" size={20} color={colors.primary} />}
@@ -491,7 +478,7 @@ export default function NouveauCamion() {
 
               <View style={[styles.resumeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.resumeLabel, { color: colors.muted }]}>Chantier</Text>
-                <Text style={[styles.resumeValue, { color: colors.foreground }]}>{chantierSelectionne?.societe.nom}</Text>
+                <Text style={[styles.resumeValue, { color: colors.foreground }]}>{chantierSelectionne?.societeNom}</Text>
                 <Text style={[styles.resumeLabel, { color: colors.muted }]}>Plaque</Text>
                 <Text style={[styles.resumeValue, { color: colors.foreground }]}>{plaque}</Text>
                 <Text style={[styles.resumeLabel, { color: colors.muted }]}>Transporteur</Text>
