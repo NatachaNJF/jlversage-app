@@ -95,3 +95,17 @@
 
 ## Correction bouton Supprimer utilisateur
 - [ ] Corriger le bouton Supprimer qui ne fait rien (Pressable + Alert + mutation)
+
+## Migration v8 — Auth email/mot de passe locale (sans OAuth Manus)
+
+- [x] Remplacer OAuth Manus par login email + mot de passe
+- [x] Backend : route auth.login (bcrypt, JWT, cookie session)
+- [x] Backend : route auth.changePassword (vérification ancien MDP)
+- [x] Backend : route users.create avec champ password obligatoire
+- [x] Backend : route users.resetPassword (admin/gestionnaire)
+- [x] Création automatique compte admin au démarrage (admin@jlversage.be)
+- [x] Écran login : formulaire email/mot de passe (sans bouton Manus)
+- [x] Écran login : changement de mot de passe obligatoire à la première connexion
+- [x] Écran utilisateurs : champ mot de passe dans formulaire de création
+- [x] Écran utilisateurs : bouton réinitialiser mot de passe (🔑 MDP)
+- [x] Déploiement Railway avec nouveau code
