@@ -5,6 +5,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
+import * as Auth from '@/lib/_core/auth';
 
 export default function LoginScreen() {
   const { isAuthenticated, loading, refresh } = useAuthContext();
@@ -23,6 +24,22 @@ export default function LoginScreen() {
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async (data) => {
+      // Stocker le token et les infos utilisateur pour les clients natifs
+      if (Platform.OS !== 'web' && data.token) {
+        await Auth.setSessionToken(data.token);
+        if (data.user) {
+          await Auth.setUserInfo({
+            id: data.user.id,
+            openId: data.user.openId,
+            name: data.user.name,
+            email: data.user.email,
+            loginMethod: data.user.loginMethod,
+            lastSignedIn: new Date(data.user.lastSignedIn ?? Date.now()),
+            role: data.user.role,
+            appRole: data.user.appRole,
+          });
+        }
+      }
       if (data.mustChangePassword) {
         setShowChangePassword(true);
       } else {
@@ -238,7 +255,8 @@ export default function LoginScreen() {
 
           {/* Info */}
           <Text style={[styles.infoText, { color: colors.muted }]}>
-            Première connexion ? Contactez l'administrateur JL Versage pour obtenir vos identifiants.
+            Première connexion ? Contactez l'administrateur : 
+          <Text style={{ color: colors.primary }}>jlversage@erouville.be</Text>
           </Text>
         </View>
       </KeyboardAvoidingView>

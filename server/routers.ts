@@ -69,7 +69,22 @@ export const appRouter = router({
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "" });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
-        return { success: true, mustChangePassword: user.mustChangePassword ?? false };
+        // Retourner le token dans la réponse pour les clients natifs (mobile)
+        return {
+          success: true,
+          mustChangePassword: user.mustChangePassword ?? false,
+          token: sessionToken,
+          user: {
+            id: user.id,
+            openId: user.openId,
+            name: user.name,
+            email: user.email,
+            loginMethod: user.loginMethod,
+            role: user.role,
+            appRole: user.appRole,
+            lastSignedIn: user.lastSignedIn,
+          },
+        };
       }),
     changePassword: protectedProcedure
       .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8, "Minimum 8 caractères") }))
