@@ -193,14 +193,16 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || !isNonEmptyString(name)) {
-        console.warn("[Auth] Session payload missing required fields");
+      // Pour les tokens locaux (openId starts with 'local:'), appId peut être vide
+      const isLocalToken = typeof openId === 'string' && openId.startsWith('local:');
+      if (!isNonEmptyString(openId) || (!isLocalToken && !isNonEmptyString(appId)) || !isNonEmptyString(name)) {
+        console.warn("[Auth] Session payload missing required fields", { openId, appId, name, isLocalToken });
         return null;
       }
 
       return {
         openId,
-        appId,
+        appId: (appId as string) || "",
         name,
       };
     } catch (error) {

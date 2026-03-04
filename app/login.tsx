@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
@@ -255,9 +255,13 @@ export default function LoginScreen() {
 
           {/* Info */}
           <Text style={[styles.infoText, { color: colors.muted }]}>
-            Première connexion ? Contactez l'administrateur : 
-          <Text style={{ color: colors.primary }}>jlversage@erouville.be</Text>
+            Première connexion ? Contactez l'administrateur :{' '}
           </Text>
+          <TouchableOpacity onPress={() => Linking.openURL('mailto:jlversage@erouville.be')}>
+            <Text style={[styles.infoText, { color: colors.primary, textDecorationLine: 'underline' }]}>
+              jlversage@erouville.be
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </ScreenContainer>
