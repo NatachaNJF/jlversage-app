@@ -122,6 +122,6 @@
 - [ ] Connexion web admin ne fonctionne pas (cookie de session non accepté par le navigateur)
 
 ## Bugs v11 — Chantier et passages
-- [ ] Impossible de passer un chantier en statut "En analyse"
-- [ ] Camion non enregistré lors d'un passage (mutation échoue silencieusement ?)
-- [ ] Vider les vieux chantiers de test de la base Railway
+- [x] Impossible de passer un chantier en statut "En analyse" (correction déjà dans commit d6b24d9)
+- [x] Camion non enregistré lors d'un passage (utilise bien tRPC, fonctionne correctement)
+- [x] Vider les vieux chantiers de test de la base Railway (supprimés)
