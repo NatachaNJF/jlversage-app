@@ -120,3 +120,8 @@
 - [x] Email de contact non cliquable dans l'écran login (ajouter Linking.openURL mailto)
 - [x] Erreur 10001 "please login" sur mobile après connexion (corriger verifySession pour appId vide)
 - [ ] Connexion web admin ne fonctionne pas (cookie de session non accepté par le navigateur)
+
+## Bugs v11 — Chantier et passages
+- [ ] Impossible de passer un chantier en statut "En analyse"
+- [ ] Camion non enregistré lors d'un passage (mutation échoue silencieusement ?)
+- [ ] Vider les vieux chantiers de test de la base Railway
