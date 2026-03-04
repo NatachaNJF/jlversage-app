@@ -109,3 +109,9 @@
 - [x] Écran utilisateurs : champ mot de passe dans formulaire de création
 - [x] Écran utilisateurs : bouton réinitialiser mot de passe (🔑 MDP)
 - [x] Déploiement Railway avec nouveau code
+
+## Corrections v9 — Admin, contact et accès web
+
+- [ ] Corriger le compte admin sur Railway (admin@jlversage.be)
+- [ ] Afficher l'email de contact jlversage@erouville.be dans l'écran login
+- [ ] Vérifier l'accès navigateur web pour la gestion des comptes
