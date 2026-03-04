@@ -112,6 +112,11 @@
 
 ## Corrections v9 — Admin, contact et accès web
 
-- [ ] Corriger le compte admin sur Railway (admin@jlversage.be)
-- [ ] Afficher l'email de contact jlversage@erouville.be dans l'écran login
+- [x] Corriger le compte admin sur Railway (admin@jlversage.be)
+- [x] Afficher l'email de contact jlversage@erouville.be dans l'écran login
 - [ ] Vérifier l'accès navigateur web pour la gestion des comptes
+
+## Bugs v10 — 3 corrections urgentes
+- [x] Email de contact non cliquable dans l'écran login (ajouter Linking.openURL mailto)
+- [x] Erreur 10001 "please login" sur mobile après connexion (corriger verifySession pour appId vide)
+- [ ] Connexion web admin ne fonctionne pas (cookie de session non accepté par le navigateur)
