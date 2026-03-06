@@ -187,7 +187,7 @@ export const appRouter = router({
     list: protectedProcedure.query(() => db.getAllChantiers()),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .mutation(async ({ input }) => {
         const c = await db.getChantierById(input.id);
         if (!c) throw new TRPCError({ code: "NOT_FOUND" });
         return c;

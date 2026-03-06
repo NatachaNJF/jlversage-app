@@ -125,3 +125,16 @@
 - [x] Impossible de passer un chantier en statut "En analyse" (correction déjà dans commit d6b24d9)
 - [x] Camion non enregistré lors d'un passage (utilise bien tRPC, fonctionne correctement)
 - [x] Vider les vieux chantiers de test de la base Railway (supprimés)
+
+
+## Bugs v12 — Chantier introuvable dans détail
+- [ ] Chantier créé visible dans filtre "Tous" mais introuvable dans détail/documents Walterre
+- [ ] Problème de requête ou permissions lors de l'accès au chantier par ID
+
+
+## Déploiement v13 — Mobile natif et web
+- [ ] Corriger le bug du chantier introuvable dans détail (requête GET tRPC)
+- [ ] Générer build APK pour Android
+- [ ] Générer build IPA pour iOS
+- [ ] Déployer l'app web sur Railway
+- [ ] Tester flux complet : création chantier → détail → documents Walterre
