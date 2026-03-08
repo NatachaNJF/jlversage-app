@@ -2,12 +2,17 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
+import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import * as db from "../db";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -95,6 +100,28 @@ async function startServer() {
       createContext,
     }),
   );
+
+  // Serve Expo web static files in production
+  const webDistPath = path.resolve(__dirname, "..", "web-dist");
+  const fs = await import("fs");
+  if (fs.existsSync(webDistPath)) {
+    console.log(`[web] Serving static files from ${webDistPath}`);
+    app.use(express.static(webDistPath));
+    // SPA fallback: serve index.html for all non-API routes
+    app.get("*", (_req, res) => {
+      const indexPath = path.join(webDistPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send("Not found");
+      }
+    });
+  } else {
+    console.log("[web] No web-dist folder found, serving API only");
+    app.get("/", (_req, res) => {
+      res.json({ status: "API only", message: "JL Versage Backend API is running. Web app not deployed." });
+    });
+  }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);

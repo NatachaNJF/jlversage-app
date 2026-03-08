@@ -138,3 +138,15 @@
 - [ ] Générer build IPA pour iOS
 - [ ] Déployer l'app web sur Railway
 - [ ] Tester flux complet : création chantier → détail → documents Walterre
+
+
+## Infrastructure v14 — Diagnostic complet et remise en état
+- [ ] Vérifier l'état de tous les services Railway (app, site web, base PostgreSQL)
+- [ ] Vérifier que la base PostgreSQL est bien démarrée et accessible
+- [ ] Vérifier les variables d'environnement (DATABASE_URL, etc.)
+- [ ] Vérifier les logs de déploiement et d'exécution
+- [ ] Vérifier que l'application arrive bien à se connecter à la base
+- [ ] Corriger les erreurs et redéployer si nécessaire
+- [ ] Configurer le serveur Express pour servir l'app web (Expo web)
+- [ ] Fournir les URL publiques fonctionnelles
+- [ ] Fournir les accès Railway et base de données à Natacha

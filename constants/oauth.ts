@@ -36,14 +36,24 @@ export function getApiBaseUrl(): string {
     return API_BASE_URL.replace(/\/$/, "");
   }
 
-  // On web, derive from current hostname by replacing port 8081 with 3000
+  // On web: check if we're on Railway (production) or dev sandbox
   if (ReactNative.Platform.OS === "web" && typeof window !== "undefined" && window.location) {
-    const { protocol, hostname } = window.location;
-    // Pattern: 8081-sandboxid.region.domain -> 3000-sandboxid.region.domain
+    const { protocol, hostname, port } = window.location;
+
+    // Dev sandbox: Pattern: 8081-sandboxid.region.domain -> 3000-sandboxid.region.domain
     const apiHostname = hostname.replace(/^8081-/, "3000-");
     if (apiHostname !== hostname) {
       return `${protocol}//${apiHostname}`;
     }
+
+    // Production Railway: API and web are on the same domain/port
+    // Use relative URL (empty string) so tRPC calls go to the same origin
+    if (hostname.includes("railway.app") || hostname.includes("up.railway.app")) {
+      return "";
+    }
+
+    // Other production: use current origin
+    return `${protocol}//${hostname}${port ? ":" + port : ""}`;
   }
 
   // Fallback to empty (will use relative URL)
