@@ -163,7 +163,7 @@ export const appRouter = router({
         const isGestionnaire = ctx.user.appRole === "gestionnaire";
         if (!isAdmin && !isGestionnaire) throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux gestionnaires" });
         const hash = await bcrypt.hash(input.newPassword, 12);
-        await db.updateUserPassword(input.userId, hash, true);
+        await db.updateUserPassword(input.userId, hash, false);
         return { success: true };
       }),
     delete: protectedProcedure
