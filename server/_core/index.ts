@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import path from "path";
-import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -11,8 +10,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import * as db from "../db";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname is available natively in CJS format (esbuild --format=cjs)
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
