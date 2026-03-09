@@ -363,6 +363,38 @@ export const appRouter = router({
       }),
   }),
 
+  // Route publique pour les demandes d'offre depuis le site vitrine
+  demandePublique: router({
+    soumettre: publicProcedure
+      .input(z.object({
+        societeNom: z.string().min(1, "Nom société requis"),
+        societeAdresse: z.string().min(1, "Adresse requise"),
+        societeTva: z.string().optional(),
+        societeMail: z.string().regex(emailRegex, "Email invalide"),
+        societeContact: z.string().min(1, "Nom contact requis"),
+        societeTelephone: z.string().min(6, "Téléphone requis"),
+        localisationChantier: z.string().min(1, "Localisation requise"),
+        contactChantier: z.string().optional(),
+        telephoneChantier: z.string().optional(),
+        volumeEstime: z.number().positive("Volume doit être positif"),
+        classe: z.number().int().min(1).max(5),
+        periodeDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+        periodeFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await db.createChantier({
+          ...input,
+          societeTva: input.societeTva || "",
+          contactChantier: input.contactChantier || input.societeContact,
+          telephoneChantier: input.telephoneChantier || input.societeTelephone,
+          statut: "demande",
+          createdByUserId: null as any,
+        });
+        return { success: true, id };
+      }),
+  }),
+
   transporteurs: router({
     list: protectedProcedure.query(() => db.getAllTransporteurs()),
     create: gestionnaireOnly
