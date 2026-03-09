@@ -267,6 +267,19 @@ export const appRouter = router({
         await db.updateChantier(input.id, { statut: "cloture" });
         return { success: true };
       }),
+    delete: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        // Seuls les chantiers en statut demande, analyse ou refuse peuvent être supprimés
+        const statutsSupprimables = ["demande", "analyse", "refuse"];
+        if (!statutsSupprimables.includes(chantier.statut)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Seuls les chantiers en statut 'demande', 'analyse' ou 'refusé' peuvent être supprimés." });
+        }
+        await db.deleteChantier(input.id);
+        return { success: true };
+      }),
   }),
 
   passages: router({
@@ -347,6 +360,37 @@ export const appRouter = router({
         const totalTonnage = passagesData.reduce((s, p) => s + p.tonnage, 0);
         const prixTonne = Number(chantier.prixTonne) || 0;
         return { chantier, passages: passagesData, totalTonnage, prixTonne, montantTotal: totalTonnage * prixTonne };
+      }),
+  }),
+
+  transporteurs: router({
+    list: protectedProcedure.query(() => db.getAllTransporteurs()),
+    create: gestionnaireOnly
+      .input(z.object({
+        nom: z.string().min(1, "Nom requis"),
+        telephone: z.string().optional(),
+        email: z.string().email("Email invalide").optional().or(z.literal("")),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await db.createTransporteur({ nom: input.nom, telephone: input.telephone || null, email: input.email || null });
+        return { id };
+      }),
+    update: gestionnaireOnly
+      .input(z.object({
+        id: z.number(),
+        nom: z.string().min(1, "Nom requis"),
+        telephone: z.string().optional(),
+        email: z.string().email("Email invalide").optional().or(z.literal("")),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateTransporteur(input.id, { nom: input.nom, telephone: input.telephone || null, email: input.email || null });
+        return { success: true };
+      }),
+    delete: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTransporteur(input.id);
+        return { success: true };
       }),
   }),
 });

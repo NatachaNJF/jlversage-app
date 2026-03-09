@@ -207,3 +207,17 @@ export const demandesPrix = pgTable("demandesPrix", {
 
 export type DemandePrix = typeof demandesPrix.$inferSelect;
 export type InsertDemandePrix = typeof demandesPrix.$inferInsert;
+
+// ─── Transporteurs ────────────────────────────────────────────────────────────
+export const transporteurs = pgTable("transporteurs", {
+  id: serial("id").primaryKey(),
+  nom: varchar("nom", { length: 255 }).notNull(),
+  telephone: varchar("telephone", { length: 30 }),
+  email: varchar("email", { length: 320 }),
+  actif: boolean("actif").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type Transporteur = typeof transporteurs.$inferSelect;
+export type InsertTransporteur = typeof transporteurs.$inferInsert;

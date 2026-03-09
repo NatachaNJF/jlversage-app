@@ -1,24 +1,25 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { showAlert, showConfirm } from '@/lib/alert';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
+import { useRouter } from 'expo-router';
 
 export default function ParametresScreen() {
   const colors = useColors();
   const { user, logout, isGestionnaire, isPrepose, isAdmin } = useAuthContext();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: logout,
-    onError: () => Alert.alert('Erreur', 'Impossible de se déconnecter.'),
+    onError: () => showAlert('Erreur', 'Impossible de se déconnecter.'),
   });
 
   const userAny = user as any;
 
+  const router = useRouter();
+
   function handleLogout() {
-    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnecter', style: 'destructive', onPress: () => logoutMutation.mutate() },
-    ]);
+    showConfirm('Déconnexion', 'Voulez-vous vous déconnecter ?', () => logoutMutation.mutate(), 'Déconnecter', true);
   }
 
   return (
@@ -80,6 +81,37 @@ export default function ParametresScreen() {
           )}
         </View>
 
+        {/* Gestion (gestionnaires uniquement) */}
+        {isGestionnaire && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Gestion</Text>
+            <Pressable
+              onPress={() => router.push('/transporteur' as any)}
+              style={({ pressed }) => [styles.menuRow, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 20 }}>🚛</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.menuLabel, { color: colors.foreground }]}>Transporteurs</Text>
+                <Text style={[styles.menuSub, { color: colors.muted }]}>Gérer la liste des transporteurs autorisés</Text>
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+            </Pressable>
+            {isAdmin && (
+              <Pressable
+                onPress={() => router.push('/admin/utilisateurs' as any)}
+                style={({ pressed }) => [styles.menuRow, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 20 }}>👥</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.menuLabel, { color: colors.foreground }]}>Utilisateurs</Text>
+                  <Text style={[styles.menuSub, { color: colors.muted }]}>Gérer les accès et les rôles</Text>
+                </View>
+                <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Info rôle */}
         <View style={[styles.infoBox, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}>
           <Text style={[styles.infoText, { color: colors.primary }]}>
@@ -137,4 +169,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 13, lineHeight: 18 },
   logoutBtn: { borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1 },
   logoutBtnText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 0 },
+  menuLabel: { fontSize: 15, fontWeight: '600' },
+  menuSub: { fontSize: 12, marginTop: 1 },
 });

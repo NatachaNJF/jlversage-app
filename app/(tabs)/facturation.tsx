@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { ScreenContainer } from '@/components/screen-container';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
@@ -29,7 +30,7 @@ export default function FacturationScreen() {
   );
 
   function handleGenerer() {
-    if (!chantierId) { Alert.alert('Erreur', 'Veuillez sélectionner un chantier.'); return; }
+    if (!chantierId) { showAlert('Erreur', 'Veuillez sélectionner un chantier.'); return; }
     setShowResult(true);
   }
 
@@ -44,7 +45,7 @@ export default function FacturationScreen() {
       `Prix/tonne;;; ;${prixTonne.toFixed(2)} EUR`,
       `Montant total;;; ;${montantTotal.toFixed(2)} EUR`,
     ];
-    Alert.alert('Export CSV', 'Données du récapitulatif :\n\n' + lines.slice(0, 5).join('\n') + '\n...\n\n(Dans la version publiée, ce fichier sera téléchargeable)');
+    showAlert('Export CSV', 'Données du récapitulatif :\n\n' + lines.slice(0, 5).join('\n') + '\n...\n\n(Dans la version publiée, ce fichier sera téléchargeable)');
   }
 
   const chantierSelectionne = chantiers.find((c: any) => c.id === chantierId);

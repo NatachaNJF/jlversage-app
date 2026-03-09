@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { trpc } from '@/lib/trpc';
@@ -22,11 +23,9 @@ export default function NouvelIncidentScreen() {
   const createMutation = trpc.incidents.create.useMutation({
     onSuccess: (data) => {
       utils.incidents.list.invalidate();
-      Alert.alert('Incident cree', "L'incident a ete enregistre.", [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showAlert('Incident créé', "L'incident a été enregistré.", () => router.back());
     },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
 
   const today = new Date().toISOString().split('T')[0];
@@ -41,11 +40,11 @@ export default function NouvelIncidentScreen() {
 
   function handleSubmit() {
     if (chantierId === null || !chantierSel) {
-      Alert.alert('Erreur', 'Selectionnez un chantier.');
+      showAlert('Erreur', 'Sélectionnez un chantier.');
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Erreur', 'La description est obligatoire.');
+      showAlert('Erreur', 'La description est obligatoire.');
       return;
     }
     createMutation.mutate({

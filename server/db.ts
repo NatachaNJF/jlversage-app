@@ -6,8 +6,10 @@ import {
   InsertChantier,
   InsertIncident,
   InsertPassage,
+  InsertTransporteur,
   InsertUser,
   passages,
+  transporteurs,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -196,6 +198,15 @@ export async function updateChantier(id: number, data: Partial<InsertChantier>) 
   await db.update(chantiers).set(data).where(eq(chantiers.id, id));
 }
 
+export async function deleteChantier(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Supprimer d'abord les passages et incidents liés
+  await db.delete(passages).where(eq(passages.chantierId, id));
+  await db.delete(incidents).where(eq(incidents.chantierId, id));
+  await db.delete(chantiers).where(eq(chantiers.id, id));
+}
+
 // ─── Passages ─────────────────────────────────────────────────────────────────
 
 export async function getAllPassages() {
@@ -296,4 +307,32 @@ export async function getFacturationChantier(chantierId: number, dateDebut: stri
   return db.select().from(passages).where(
     and(eq(passages.chantierId, chantierId), eq(passages.accepte, true), gte(passages.date, dateDebut), lte(passages.date, dateFin))
   ).orderBy(passages.date);
+}
+
+// ─── Transporteurs ────────────────────────────────────────────────────────────
+
+export async function getAllTransporteurs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(transporteurs).where(eq(transporteurs.actif, true)).orderBy(transporteurs.nom);
+}
+
+export async function createTransporteur(data: InsertTransporteur) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(transporteurs).values(data).returning({ id: transporteurs.id });
+  return result[0].id;
+}
+
+export async function updateTransporteur(id: number, data: Partial<InsertTransporteur>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(transporteurs).set({ ...data, updatedAt: new Date() }).where(eq(transporteurs.id, id));
+}
+
+export async function deleteTransporteur(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Soft delete : marquer comme inactif
+  await db.update(transporteurs).set({ actif: false, updatedAt: new Date() }).where(eq(transporteurs.id, id));
 }

@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { showAlert, showConfirm } from '@/lib/alert';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
+import { getTodayBrussels } from '@/lib/date';
 
 const CLASSES = [1, 2, 3, 4, 5];
 
@@ -49,18 +51,16 @@ export default function NouveauChantierScreen() {
     onSuccess: async (data: any) => {
       await utils.chantiers.list.invalidate();
       if (data.refused) {
-        Alert.alert(
+        showAlert(
           'Demande refusée automatiquement',
           "La classe de terre déclarée est supérieure à 2. Notre site n'accepte que les classes 1 et 2. Un email de refus a été envoyé au client.",
-          [{ text: 'OK', onPress: () => router.back() }],
+          () => router.back(),
         );
       } else {
-        Alert.alert('Succès', 'Le dossier a été créé avec succès.', [
-          { text: 'OK', onPress: () => router.replace(('/chantier/' + data.id) as any) },
-        ]);
+        showAlert('Succès', 'Le dossier a été créé avec succès.', () => router.replace(('/chantier/' + data.id) as any));
       }
     },
-    onError: (err: any) => { Alert.alert('Erreur', err.message); },
+    onError: (err: any) => { showAlert('Erreur', err.message); },
   });
 
   const [societeNom, setSocieteNom] = useState('');
@@ -110,13 +110,12 @@ export default function NouveauChantierScreen() {
   function handleSubmit() {
     if (!validate()) return;
     if (classe > 2) {
-      Alert.alert(
+      showConfirm(
         'Attention — Classe incompatible',
         `La classe ${classe} n'est pas acceptée (classes 1 et 2 uniquement). Le dossier sera automatiquement refusé. Continuer ?`,
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Confirmer le refus', style: 'destructive', onPress: () => submitData() },
-        ],
+        () => submitData(),
+        'Confirmer le refus',
+        true,
       );
     } else { submitData(); }
   }
@@ -212,10 +211,34 @@ export default function NouveauChantierScreen() {
           {classe > 2 && <Text style={styles.classeWarning}>Classes 3, 4, 5 → refus automatique</Text>}
         </Field>
         <Field label="Date de début" required error={errors.periodeDebut}>
-          <Input value={periodeDebut} onChangeText={setPeriodeDebut} placeholder="YYYY-MM-DD (ex: 2026-03-01)" error={errors.periodeDebut} />
+          {Platform.OS === 'web' ? (
+            <View style={[styles.input, { backgroundColor: colors.surface, borderColor: errors.periodeDebut ? '#EF4444' : colors.border, justifyContent: 'center' }]}>
+              <input
+                type="date"
+                value={periodeDebut}
+                min={getTodayBrussels()}
+                onChange={(e: any) => setPeriodeDebut(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: 15, color: colors.foreground, outline: 'none', width: '100%', fontFamily: 'inherit' }}
+              />
+            </View>
+          ) : (
+            <Input value={periodeDebut} onChangeText={setPeriodeDebut} placeholder="YYYY-MM-DD (ex: 2026-03-01)" error={errors.periodeDebut} />
+          )}
         </Field>
         <Field label="Date de fin" required error={errors.periodeFin}>
-          <Input value={periodeFin} onChangeText={setPeriodeFin} placeholder="YYYY-MM-DD (ex: 2026-12-31)" error={errors.periodeFin} />
+          {Platform.OS === 'web' ? (
+            <View style={[styles.input, { backgroundColor: colors.surface, borderColor: errors.periodeFin ? '#EF4444' : colors.border, justifyContent: 'center' }]}>
+              <input
+                type="date"
+                value={periodeFin}
+                min={periodeDebut || getTodayBrussels()}
+                onChange={(e: any) => setPeriodeFin(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: 15, color: colors.foreground, outline: 'none', width: '100%', fontFamily: 'inherit' }}
+              />
+            </View>
+          ) : (
+            <Input value={periodeFin} onChangeText={setPeriodeFin} placeholder="YYYY-MM-DD (ex: 2026-12-31)" error={errors.periodeFin} />
+          )}
         </Field>
         <Field label="Notes internes (optionnel)">
           <Input value={notes} onChangeText={setNotes} placeholder="Remarques, observations..." multiline inputStyle={{ minHeight: 80, textAlignVertical: 'top' }} />

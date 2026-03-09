@@ -1,7 +1,8 @@
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, KeyboardAvoidingView, Platform, Image
+  TextInput, KeyboardAvoidingView, Platform, Image
 } from "react-native";
+import { showAlert, showConfirm } from "@/lib/alert";
 import { useRouter } from "expo-router";
 import { useState, useMemo } from "react";
 import * as ImagePicker from 'expo-image-picker';
@@ -11,6 +12,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { MotifRefus, MOTIF_REFUS_LABELS } from "@/types";
+import { getNowBrussels } from "@/lib/date";
 
 const ANOMALIES_VISUELLES: { id: MotifRefus; label: string; emoji: string }[] = [
   { id: 'dechets', label: 'Déchets présents', emoji: '🗑' },
@@ -69,13 +71,7 @@ export default function NouveauCamion() {
     [chantiers, chantierId]
   );
 
-  const getNowStrings = () => {
-    const now = new Date();
-    return {
-      date: now.toISOString().split('T')[0],
-      heure: now.toTimeString().slice(0, 5),
-    };
-  };
+  const getNowStrings = () => getNowBrussels();
 
   const adminOk = bonWalterreOk && referenceOk && plaqueOk && correspondanceOk;
   const adminRefus = bonWalterreOk === false || referenceOk === false || plaqueOk === false || correspondanceOk === false;
@@ -83,7 +79,7 @@ export default function NouveauCamion() {
   const handlePrendrePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission refusée', 'Accès à la caméra nécessaire pour prendre une photo.');
+      showAlert('Permission refusée', 'Accès à la caméra nécessaire pour prendre une photo.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -114,17 +110,16 @@ export default function NouveauCamion() {
 
   const validerEtape1 = () => {
     if (!chantierId || !plaque.trim() || !transporteur.trim()) {
-      Alert.alert('Champs requis', 'Veuillez sélectionner un chantier, saisir la plaque et le transporteur.');
+      showAlert('Champs requis', 'Veuillez sélectionner un chantier, saisir la plaque et le transporteur.');
       return;
     }
     if (adminRefus) {
-      Alert.alert(
+      showConfirm(
         'Refus administratif',
         'Un ou plusieurs contrôles administratifs ont échoué. Le camion doit être refusé.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Enregistrer le refus', onPress: () => handleSaveRefus('admin') },
-        ]
+        () => handleSaveRefus('admin'),
+        'Enregistrer le refus',
+        true,
       );
       return;
     }
@@ -133,21 +128,20 @@ export default function NouveauCamion() {
 
   const validerEtape2 = () => {
     if (controleVisuelOk === null) {
-      Alert.alert('Contrôle requis', 'Veuillez indiquer si le contrôle visuel est OK ou non.');
+      showAlert('Contrôle requis', 'Veuillez indiquer si le contrôle visuel est OK ou non.');
       return;
     }
     if (!controleVisuelOk && anomaliesSelectionnees.length === 0) {
-      Alert.alert('Anomalie requise', 'Veuillez sélectionner au moins une anomalie constatée.');
+      showAlert('Anomalie requise', 'Veuillez sélectionner au moins une anomalie constatée.');
       return;
     }
     if (!controleVisuelOk) {
-      Alert.alert(
+      showConfirm(
         'Refus visuel',
         'Des anomalies visuelles ont été constatées. Le camion doit être refusé.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Enregistrer le refus', onPress: () => handleSaveRefus('visuel') },
-        ]
+        () => handleSaveRefus('visuel'),
+        'Enregistrer le refus',
+        true,
       );
       return;
     }
@@ -183,10 +177,10 @@ export default function NouveauCamion() {
         anomalies: type === 'visuel' ? anomaliesSelectionnees : undefined,
       });
 
-      Alert.alert('Refus enregistré', 'Le refus a été enregistré dans le registre.');
+      showAlert('Refus enregistré', 'Le refus a été enregistré dans le registre.');
       router.back();
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message || 'Impossible d\'enregistrer.');
+      showAlert('Erreur', e?.message || 'Impossible d\'enregistrer.');
     } finally {
       setSaving(false);
     }
@@ -194,7 +188,7 @@ export default function NouveauCamion() {
 
   const handleSaveAccepte = async () => {
     if (!tonnage.trim() || isNaN(parseFloat(tonnage))) {
-      Alert.alert('Tonnage requis', 'Veuillez saisir le tonnage.');
+      showAlert('Tonnage requis', 'Veuillez saisir le tonnage.');
       return;
     }
     setSaving(true);
@@ -217,10 +211,10 @@ export default function NouveauCamion() {
         controleVisuelOk: true,
       });
 
-      Alert.alert('Camion accepté', 'L\'arrivée a été enregistrée dans le registre.');
+      showAlert('Camion accepté', 'L\'arrivée a été enregistrée dans le registre.');
       router.back();
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message || 'Impossible d\'enregistrer.');
+      showAlert('Erreur', e?.message || 'Impossible d\'enregistrer.');
     } finally {
       setSaving(false);
     }

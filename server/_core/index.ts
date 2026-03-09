@@ -31,6 +31,33 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+async function runMigrations() {
+  try {
+    // Migration: créer la table transporteurs si elle n'existe pas
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) { console.warn("[Migration] DATABASE_URL non définie"); return; }
+    const { Pool } = await import("pg");
+    const migPool = new Pool({ connectionString: dbUrl });
+    // Supprimer l'ancienne table si elle a les mauvaises colonnes
+    await migPool.query(`DROP TABLE IF EXISTS transporteurs`);
+    await migPool.query(`
+      CREATE TABLE IF NOT EXISTS transporteurs (
+        id SERIAL PRIMARY KEY,
+        nom VARCHAR(255) NOT NULL,
+        telephone VARCHAR(50),
+        email VARCHAR(320),
+        actif BOOLEAN NOT NULL DEFAULT TRUE,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      )
+    `);
+    await migPool.end();
+    console.log("[Migration] Table transporteurs OK");
+  } catch (err) {
+    console.error("[Migration] Erreur:", err);
+  }
+}
+
 async function seedAdminUser() {
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@jlversage.be";
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "JLVersage2026!";
@@ -91,6 +118,20 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
+  // Endpoint de migration temporaire (sécurisé par secret)
+  app.post("/api/migrate", async (req, res) => {
+    const secret = req.headers["x-migrate-secret"];
+    if (secret !== "jlversage-migrate-2026") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      await runMigrations();
+      res.json({ ok: true, message: "Migrations executed" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -130,7 +171,8 @@ async function startServer() {
 
   server.listen(port, async () => {
     console.log(`[api] server listening on port ${port}`);
-    // Créer le compte admin par défaut si nécessaire
+    // Migrations et seed
+    await runMigrations();
     await seedAdminUser();
   });
 }

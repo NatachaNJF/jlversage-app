@@ -15,6 +15,13 @@
       "when": 1772097669087,
       "tag": "0001_magical_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773089937386,
+      "tag": "0002_jazzy_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

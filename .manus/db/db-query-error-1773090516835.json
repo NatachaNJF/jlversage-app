@@ -1,0 +1,10 @@
+{
+  "query": "\nCREATE TABLE IF NOT EXISTS transporteurs (\n  id SERIAL PRIMARY KEY,\n  nom VARCHAR(255) NOT NULL,\n  telephone VARCHAR(50),\n  email VARCHAR(255),\n  actif BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute \nCREATE TABLE IF NOT EXISTS transporteurs (\n  id SERIAL PRIMARY KEY,\n  nom VARCHAR(255) NOT NULL,\n  telephone VARCHAR(50),\n  email VARCHAR(255),\n  actif BOOLEAN NOT NULL DEFAULT TRUE,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 7 column 28 near \"WITH TIME ZONE DEFAULT NOW(),",
+    "  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()",
+    ")\""
+  ]
+}

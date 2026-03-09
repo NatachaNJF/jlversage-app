@@ -4,6 +4,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
+import { getTodayBrussels } from '@/lib/date';
 
 const STATUT_LABELS: Record<string, string> = {
   demande: 'Demande reçue', analyse: 'En analyse', offre_envoyee: 'Offre envoyée',
@@ -21,7 +22,7 @@ const STATUT_COLORS: Record<string, string> = {
 export default function DashboardScreen() {
   const { user, isGestionnaire } = useAuthContext();
   const colors = useColors();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayBrussels();
 
   const statsQuery = trpc.stats.jour.useQuery({ date: today });
   const chantiersQuery = trpc.chantiers.list.useQuery();

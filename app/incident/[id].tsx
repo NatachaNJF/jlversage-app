@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { trpc } from '@/lib/trpc';
@@ -33,7 +34,7 @@ export default function IncidentDetailScreen() {
       setShowNotes(false);
       setTargetStatut(null);
     },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
 
   const [notes, setNotes] = useState('');

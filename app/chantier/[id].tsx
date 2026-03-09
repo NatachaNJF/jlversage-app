@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
+import { showAlert, showConfirm } from '@/lib/alert';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
@@ -54,31 +55,35 @@ export default function ChantierDetailScreen() {
 
   const updateMutation = trpc.chantiers.update.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
   const envoyerOffreMutation = trpc.chantiers.envoyerOffre.useMutation({
     onSuccess: () => {
       utils.chantiers.get.invalidate({ id: Number(id) });
-      Alert.alert('Succès', "L'offre de prix a été envoyée par email au client.");
+      showAlert('Succès', "L'offre de prix a été envoyée par email au client.");
       setShowOffreModal(false); setPrixTonne(''); setConditions('');
     },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
   const autoriserMutation = trpc.chantiers.autoriser.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); setShowAutoriserModal(false); },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
   const refuserMutation = trpc.chantiers.refuserAdmin.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); setShowRefusModal(false); setMotifRefus(''); },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
   const cloturerMutation = trpc.chantiers.cloturer.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
   const confirmerAccordMutation = trpc.chantiers.confirmerAccordClient.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
-    onError: (err: any) => Alert.alert('Erreur', err.message),
+    onError: (err: any) => showAlert('Erreur', err.message),
+  });
+  const deleteMutation = trpc.chantiers.delete.useMutation({
+    onSuccess: () => { utils.chantiers.list.invalidate(); router.replace('/(tabs)'); },
+    onError: (err: any) => showAlert('Erreur', err.message),
   });
 
   const [showOffreModal, setShowOffreModal] = useState(false);
@@ -114,24 +119,21 @@ export default function ChantierDetailScreen() {
 
   function handleSendOffre() {
     if (!prixTonne.trim() || isNaN(Number(prixTonne)) || Number(prixTonne) <= 0) {
-      Alert.alert('Erreur', 'Veuillez saisir un prix à la tonne valide.'); return;
+      showAlert('Erreur', 'Veuillez saisir un prix à la tonne valide.'); return;
     }
     if (!conditions.trim()) {
-      Alert.alert('Erreur', 'Veuillez saisir les conditions d\'acceptation.'); return;
+      showAlert('Erreur', 'Veuillez saisir les conditions d\'acceptation.'); return;
     }
     envoyerOffreMutation.mutate({ id: Number(id), prixTonne: Number(prixTonne), conditionsAcceptation: conditions.trim() });
   }
   function handleRefuser() {
     if (!motifRefus.trim() || motifRefus.trim().length < 10) {
-      Alert.alert('Motif requis', 'Veuillez indiquer le motif du refus (minimum 10 caractères).'); return;
+      showAlert('Motif requis', 'Veuillez indiquer le motif du refus (minimum 10 caractères).'); return;
     }
     refuserMutation.mutate({ id: Number(id), motif: motifRefus.trim() });
   }
   function handleAutoriser() {
-    Alert.alert('Confirmer', 'Autoriser définitivement ce chantier ? Un email sera envoyé au client.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Autoriser', onPress: () => autoriserMutation.mutate({ id: Number(id) }) },
-    ]);
+    showConfirm('Autoriser le chantier', 'Autoriser définitivement ce chantier ? Un email sera envoyé au client.', () => autoriserMutation.mutate({ id: Number(id) }), 'Autoriser');
   }
 
   return (
@@ -141,7 +143,11 @@ export default function ChantierDetailScreen() {
           <Text style={[styles.backText, { color: colors.primary }]}>‹ Retour</Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{c.societeNom}</Text>
-        <View style={{ width: 60 }} />
+        {['demande', 'analyse'].includes(c.statut) && isGestionnaire ? (
+          <Pressable onPress={() => router.push((`/chantier/modifier/${id}`) as any)} style={[styles.btn, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>Modifier</Text>
+          </Pressable>
+        ) : <View style={{ width: 60 }} />}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -225,10 +231,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'demande' ? (
               <ActionBtn label="Passer en analyse" color="#F59E0B" loading={updateMutation.isPending}
-                onPress={() => Alert.alert('Confirmer', 'Passer ce dossier en analyse ?', [
-                  { text: 'Annuler', style: 'cancel' },
-                  { text: 'Confirmer', onPress: () => updateMutation.mutate({ id: Number(id), data: { statut: 'analyse' } as any }) },
-                ])} />
+                onPress={() => showConfirm('Passer en analyse', 'Passer ce dossier en analyse ?', () => updateMutation.mutate({ id: Number(id), data: { statut: 'analyse' } as any }))} />
             ) : null}
 
             {c.statut === 'analyse' ? (
@@ -237,10 +240,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'offre_envoyee' ? (
               <ActionBtn label="Confirmer accord client → Documents" color="#8B5CF6" loading={confirmerAccordMutation.isPending}
-                onPress={() => Alert.alert('Confirmer', 'Le client a accepté l\'offre ? Passer à la demande de documents Walterre ?', [
-                  { text: 'Annuler', style: 'cancel' },
-                  { text: 'Confirmer', onPress: () => confirmerAccordMutation.mutate({ id: Number(id) }) },
-                ])} />
+                onPress={() => showConfirm('Accord client', 'Le client a accepté l\'offre ? Passer à la demande de documents Walterre ?', () => confirmerAccordMutation.mutate({ id: Number(id) }))} />
             ) : null}
 
             {c.statut === 'documents_demandes' ? (
@@ -257,10 +257,12 @@ export default function ChantierDetailScreen() {
 
             {['autorise', 'en_cours', 'volume_atteint'].includes(c.statut) ? (
               <ActionBtn label="Clôturer le chantier" color="#6B7280" loading={cloturerMutation.isPending}
-                onPress={() => Alert.alert('Clôturer', 'Confirmer la clôture définitive ?', [
-                  { text: 'Annuler', style: 'cancel' },
-                  { text: 'Clôturer', style: 'destructive', onPress: () => cloturerMutation.mutate({ id: Number(id) }) },
-                ])} />
+                onPress={() => showConfirm('Clôturer le chantier', 'Confirmer la clôture définitive ?', () => cloturerMutation.mutate({ id: Number(id) }), 'Clôturer', true)} />
+            ) : null}
+
+            {['demande', 'analyse', 'refuse'].includes(c.statut) ? (
+              <ActionBtn label="Supprimer ce chantier" color="#DC2626" loading={deleteMutation.isPending}
+                onPress={() => showConfirm('Supprimer le chantier', `Supprimer définitivement le chantier de ${c.societeNom} ? Cette action est irréversible.`, () => deleteMutation.mutate({ id: Number(id) }), 'Supprimer', true)} />
             ) : null}
           </View>
         ) : null}
