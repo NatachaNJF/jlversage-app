@@ -19,32 +19,42 @@ export function useAuth(options?: UseAuthOptions) {
       setLoading(true);
       setError(null);
 
-      // Web platform: use cookie-based auth, fetch user from API
+      // Web platform: use token-based auth (same as native, stored in localStorage)
       if (Platform.OS === "web") {
-        console.log("[useAuth] Web platform: fetching user from API...");
-        const apiUser = await Api.getMe();
-        console.log("[useAuth] API user response:", apiUser);
-
-        if (apiUser) {
-          const userInfo: Auth.User = {
-            id: apiUser.id,
-            openId: apiUser.openId,
-            name: apiUser.name,
-            email: apiUser.email,
-            loginMethod: apiUser.loginMethod,
-            lastSignedIn: new Date(apiUser.lastSignedIn),
-            // Inclure les rôles pour le contrôle d'accès
-            role: (apiUser as any).role ?? null,
-            appRole: (apiUser as any).appRole ?? null,
-          };
-          setUser(userInfo);
-          // Cache user info in localStorage for faster subsequent loads
-          await Auth.setUserInfo(userInfo);
-          console.log("[useAuth] Web user set from API:", userInfo);
-        } else {
-          console.log("[useAuth] Web: No authenticated user from API");
+        console.log("[useAuth] Web platform: checking localStorage token...");
+        const sessionToken = await Auth.getSessionToken();
+        if (!sessionToken) {
+          console.log("[useAuth] Web: No token in localStorage");
           setUser(null);
-          await Auth.clearUserInfo();
+          return;
+        }
+        // Use cached user info from localStorage
+        const cachedUser = await Auth.getUserInfo();
+        if (cachedUser) {
+          console.log("[useAuth] Web: Using cached user info from localStorage");
+          setUser(cachedUser);
+        } else {
+          // Token exists but no cached user - fetch from API
+          console.log("[useAuth] Web: Token present but no cached user, fetching from API...");
+          const apiUser = await Api.getMe();
+          if (apiUser) {
+            const userInfo: Auth.User = {
+              id: apiUser.id,
+              openId: apiUser.openId,
+              name: apiUser.name,
+              email: apiUser.email,
+              loginMethod: apiUser.loginMethod,
+              lastSignedIn: new Date(apiUser.lastSignedIn),
+              role: (apiUser as any).role ?? null,
+              appRole: (apiUser as any).appRole ?? null,
+            };
+            setUser(userInfo);
+            await Auth.setUserInfo(userInfo);
+          } else {
+            setUser(null);
+            await Auth.clearUserInfo();
+            await Auth.removeSessionToken();
+          }
         }
         return;
       }
@@ -103,9 +113,27 @@ export function useAuth(options?: UseAuthOptions) {
     console.log("[useAuth] useEffect triggered, autoFetch:", autoFetch, "platform:", Platform.OS);
     if (autoFetch) {
       if (Platform.OS === "web") {
-        // Web: fetch user from API directly (user will login manually if needed)
-        console.log("[useAuth] Web: fetching user from API...");
-        fetchUser();
+        // Web: check localStorage token first (same as native)
+        console.log("[useAuth] Web: checking localStorage token...");
+        Auth.getSessionToken().then((token) => {
+          if (token) {
+            // Token exists, check cached user
+            Auth.getUserInfo().then((cachedUser) => {
+              if (cachedUser) {
+                console.log("[useAuth] Web: setting cached user immediately");
+                setUser(cachedUser);
+                setLoading(false);
+              } else {
+                fetchUser();
+              }
+            });
+          } else {
+            // No token, user is not authenticated
+            console.log("[useAuth] Web: no token, user not authenticated");
+            setUser(null);
+            setLoading(false);
+          }
+        });
       } else {
         // Native: check for cached user info first for faster initial load
         Auth.getUserInfo().then((cachedUser) => {

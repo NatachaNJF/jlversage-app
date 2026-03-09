@@ -24,8 +24,8 @@ export default function LoginScreen() {
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async (data) => {
-      // Stocker le token et les infos utilisateur pour les clients natifs
-      if (Platform.OS !== 'web' && data.token) {
+      // Stocker le token et les infos utilisateur (web + natif)
+      if (data.token) {
         await Auth.setSessionToken(data.token);
         if (data.user) {
           await Auth.setUserInfo({
