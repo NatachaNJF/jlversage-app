@@ -7,23 +7,22 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Build server + web app
+# Build server only
 FROM deps AS builder
 COPY . .
 # Build the backend server
 RUN pnpm build
-# Build the Expo web app
-RUN npx expo export --platform web --output-dir web-dist
 
-# Production image - copy node_modules from builder to avoid missing packages
+# Production image
 FROM node:20-alpine AS runner
 WORKDIR /app
-COPY package.json ./
-# Copy all node_modules from builder (includes all deps needed at runtime)
-COPY --from=builder /app/node_modules ./node_modules
+RUN npm install -g pnpm@9.12.0
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/web-dist ./web-dist
+# Copy pre-built web app (built locally and committed to repo)
+COPY web-dist ./web-dist
 
 EXPOSE 3000
 ENV NODE_ENV=production
