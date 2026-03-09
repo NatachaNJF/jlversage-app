@@ -15,14 +15,12 @@ RUN pnpm build
 # Build the Expo web app
 RUN npx expo export --platform web --output-dir web-dist
 
-# Production image
+# Production image - copy node_modules from builder to avoid missing packages
 FROM node:20-alpine AS runner
 WORKDIR /app
-RUN npm install -g pnpm@9.12.0
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
-
+COPY package.json ./
+# Copy all node_modules from builder (includes all deps needed at runtime)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/web-dist ./web-dist
@@ -32,4 +30,4 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Run server (serves both API and web app)
-CMD ["sh", "-c", "node dist/index.js"]
+CMD ["node", "dist/index.js"]
