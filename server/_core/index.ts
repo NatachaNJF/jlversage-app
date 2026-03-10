@@ -62,6 +62,17 @@ async function runMigrations() {
     await migPool.query(`ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS "bonCommandeSigne" BOOLEAN DEFAULT FALSE`).catch(() => {});
     await migPool.query(`ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS "planningVersages" TEXT`).catch(() => {});
 
+    // ── Table fermetures (congés et jours de fermeture du site) ───────────────────────
+    await migPool.query(`
+      CREATE TABLE IF NOT EXISTS fermetures (
+        id SERIAL PRIMARY KEY,
+        "dateDebut" VARCHAR(10) NOT NULL,
+        "dateFin" VARCHAR(10) NOT NULL,
+        motif VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      )
+    `);
+
     await migPool.end();
     console.log("[Migration] Toutes les migrations appliquées avec succès");
   } catch (err) {

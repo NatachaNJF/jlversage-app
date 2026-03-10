@@ -96,6 +96,17 @@ export default function ParametresScreen() {
               </View>
               <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
             </Pressable>
+            <Pressable
+              onPress={() => router.push('/fermetures' as any)}
+              style={({ pressed }) => [styles.menuRow, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 20 }}>📅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.menuLabel, { color: colors.foreground }]}>Congés & Fermetures</Text>
+                <Text style={[styles.menuSub, { color: colors.muted }]}>Planifier les jours de fermeture du site</Text>
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+            </Pressable>
             {isAdmin && (
               <Pressable
                 onPress={() => router.push('/admin/utilisateurs' as any)}

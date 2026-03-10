@@ -511,6 +511,26 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  fermetures: router({
+    list: protectedProcedure.query(() => db.getAllFermetures()),
+    create: gestionnaireOnly
+      .input(z.object({
+        dateDebut: z.string().min(10, "Date de début requise"),
+        dateFin: z.string().min(10, "Date de fin requise"),
+        motif: z.string().min(1, "Motif requis"),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await db.createFermeture(input);
+        return { id };
+      }),
+    delete: gestionnaireOnly
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteFermeture(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

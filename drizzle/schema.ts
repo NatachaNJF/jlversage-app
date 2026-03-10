@@ -225,3 +225,14 @@ export const transporteurs = pgTable("transporteurs", {
 
 export type Transporteur = typeof transporteurs.$inferSelect;
 export type InsertTransporteur = typeof transporteurs.$inferInsert;
+
+// ─── Fermetures / Congés ────────────────────────────────────────────
+export const fermetures = pgTable("fermetures", {
+  id: serial("id").primaryKey(),
+  dateDebut: varchar("dateDebut", { length: 10 }).notNull(), // YYYY-MM-DD
+  dateFin: varchar("dateFin", { length: 10 }).notNull(),     // YYYY-MM-DD (= dateDebut si 1 jour)
+  motif: varchar("motif", { length: 255 }).notNull(),        // ex: "Congés d'été", "Jour férié", "Maintenance"
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Fermeture = typeof fermetures.$inferSelect;
+export type InsertFermeture = typeof fermetures.$inferInsert;

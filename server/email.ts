@@ -270,7 +270,7 @@ export function emailConditionsAccesTransporteur(
         </tr>
         <tr style="background:#f9f9f9">
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Horaires d'accès</td>
-          <td style="padding:8px;border:1px solid #ddd">Lundi au vendredi : 07h00 – 17h00<br>Samedi : 07h00 – 12h00 (sur rendez-vous)</td>
+          <td style="padding:8px;border:1px solid #ddd">Lundi au vendredi : 07h00 – 16h00<br><strong>Dernier dépôt autorisé à 15h45</strong><br>Fermé le samedi et les jours fériés</td>
         </tr>
         <tr>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Classe de terres acceptées</td>
@@ -298,7 +298,7 @@ export function emailConditionsAccesTransporteur(
       <p>Pour toute question, n'hésitez pas à nous contacter.</p>
       <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
     `,
-    text: `Bonjour ${transporteurNom},\n\nConditions d'accès au site de versage JL Versage (Transinne) :\n- Bon de transport Walterre valide obligatoire\n- Horaires : lun-ven 07h-17h, sam 07h-12h\n- Classes 1 et 2 uniquement\n- Référence chantier à communiquer à l'arrivée\n- Refus systématique : déchets plastiques, briquaillons, odeur suspecte, couleur anormale, matériaux mélangés, humidité anormale ou boues douteuses\n\nCordialement,\nJL Versage`,
+    text: `Bonjour ${transporteurNom},\n\nConditions d'accès au site de versage JL Versage (Transinne) :\n- Bon de transport Walterre valide obligatoire\n- Horaires : lun-ven 07h-16h (dernier dépôt à 15h45) — fermé le samedi\n- Classes 1 et 2 uniquement\n- Référence chantier à communiquer à l'arrivée\n- Refus systématique : déchets plastiques, briquaillons, odeur suspecte, couleur anormale, matériaux mélangés, humidité anormale ou boues douteuses\n\nCordialement,\nJL Versage`,
   };
 }
 

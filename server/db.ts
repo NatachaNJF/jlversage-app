@@ -12,6 +12,8 @@ import {
   InsertUser,
   Passage,
   passages,
+  fermetures,
+  InsertFermeture,
   transporteurs,
   users,
 } from "../drizzle/schema";
@@ -361,4 +363,24 @@ export async function deleteTransporteur(id: number) {
   if (!db) throw new Error("Database not available");
   // Soft delete : marquer comme inactif
   await db.update(transporteurs).set({ actif: false, updatedAt: new Date() }).where(eq(transporteurs.id, id));
+}
+
+// ─── Fermetures / Congés ────────────────────────────────────────────
+
+export async function getAllFermetures() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(fermetures).orderBy(fermetures.dateDebut);
+}
+
+export async function createFermeture(data: InsertFermeture) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return insertAndGetId(fermetures, data);
+}
+
+export async function deleteFermeture(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(fermetures).where(eq(fermetures.id, id));
 }

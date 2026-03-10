@@ -191,3 +191,9 @@
 - [x] Email 4 : offre comptant — ajouter "avant de décharger sur le site"
 - [x] Email 5 : autorisation — remettre les conditions détaillées (refus matériaux, classes 1-2)
 - [x] Email 7 : volume atteint — préciser qu'il faut un nouveau bon de transport Walterre
+
+## Planning v18 — Congés et fermetures
+- [x] Corriger horaires email transporteur : lun-ven 07h-16h, pas de samedi, dernier dépôt 15h45
+- [x] Ajouter gestion des congés/fermetures dans le planning de versages (tableau des jours bloqués)
+- [ ] Afficher les jours fermés dans l'écran d'analyse étape 1 (capacité)
+- [ ] Bloquer les passages ce jour-là dans l'app préposé si le site est fermé
