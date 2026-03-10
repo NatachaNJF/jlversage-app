@@ -161,3 +161,12 @@
 - [ ] Coche "mail conditions envoyé" dans la table et l'interface transporteurs
 - [ ] Coche "bon de commande signé" dans l'étape documents Walterre
 - [ ] Tableau planning versages prévus par jour dans l'étape documents Walterre
+- [x] Refus automatique classe > 2 depuis site vitrine (route demandePublique)
+- [x] Libellés "Date de début du versage" et "Date de fin du versage" dans formulaire
+- [x] Classe sans valeur par défaut dans formulaire création chantier
+- [x] Champ "Versage à (site)" dans formulaire création chantier
+- [x] Mail conditions d'accès au site envoyé automatiquement à la création d'un transporteur
+- [x] Coche "Conditions envoyées" dans la liste des transporteurs
+- [x] Coche "Bon de commande signé" dans l'écran documents Walterre
+- [x] Tableau planning versages prévus par jour dans l'écran documents Walterre
+- [x] Migrations base de données (siteVersage, bonCommandeSigne, planningVersages, mailConditionsEnvoye)
