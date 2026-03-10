@@ -37,6 +37,8 @@ export default function DocumentsChantier() {
   const [volumeDeclare, setVolumeDeclare] = useState('');
   const [regime, setRegime] = useState('');
   const [selectedTransporteurs, setSelectedTransporteurs] = useState<number[]>([]);
+  const [bonCommandeSigne, setBonCommandeSigne] = useState(false);
+  const [planningVersages, setPlanningVersages] = useState<{date: string; tonnagePrev: string; notes: string}[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   // Initialiser les champs avec les données existantes (une seule fois)
@@ -44,6 +46,15 @@ export default function DocumentsChantier() {
     setRefWalterre(chantier.referenceWalterre || '');
     setVolumeDeclare(chantier.volumeDeclare?.toString() || '');
     setRegime(chantier.regimeApplicable || '');
+    setBonCommandeSigne(!!(chantier as any).bonCommandeSigne);
+    if ((chantier as any).planningVersages) {
+      try {
+        const saved = typeof (chantier as any).planningVersages === 'string'
+          ? JSON.parse((chantier as any).planningVersages)
+          : (chantier as any).planningVersages;
+        if (Array.isArray(saved)) setPlanningVersages(saved.map((r: any) => ({ date: r.date || '', tonnagePrev: String(r.tonnagePrev || ''), notes: r.notes || '' })));
+      } catch {}
+    }
     // Pré-sélectionner les transporteurs déjà enregistrés
     if (chantier.transporteurs) {
       try {
@@ -57,6 +68,18 @@ export default function DocumentsChantier() {
       } catch {}
     }
     setInitialized(true);
+  }
+
+  function addPlanningRow() {
+    setPlanningVersages(prev => [...prev, { date: '', tonnagePrev: '', notes: '' }]);
+  }
+
+  function updatePlanningRow(idx: number, field: 'date' | 'tonnagePrev' | 'notes', value: string) {
+    setPlanningVersages(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+
+  function removePlanningRow(idx: number) {
+    setPlanningVersages(prev => prev.filter((_, i) => i !== idx));
   }
 
   function toggleTransporteur(tid: number) {
@@ -115,6 +138,10 @@ export default function DocumentsChantier() {
       transporteurs: nomsTransporteurs,
       certificatQualite: true,
       rapportAnalyse: true,
+      bonCommandeSigne,
+      planningVersages: planningVersages
+        .filter(r => r.date.trim())
+        .map(r => ({ date: r.date.trim(), tonnagePrev: parseFloat(r.tonnagePrev) || 0, notes: r.notes.trim() })),
     });
   };
 
@@ -137,8 +164,25 @@ export default function DocumentsChantier() {
             </Text>
           </View>
 
+          {/* Bon de commande signé */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Documents administratifs</Text>
+
+          <TouchableOpacity
+            onPress={() => setBonCommandeSigne(v => !v)}
+            style={[styles.checkRow, { backgroundColor: colors.surface, borderColor: bonCommandeSigne ? colors.primary : colors.border }]}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.checkbox, { borderColor: bonCommandeSigne ? colors.primary : colors.border, backgroundColor: bonCommandeSigne ? colors.primary : 'transparent' }]}>
+              {bonCommandeSigne ? <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✓</Text> : null}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.checkLabel, { color: colors.foreground }]}>Bon de commande signé</Text>
+              <Text style={[styles.checkSub, { color: colors.muted }]}>Le client a signé et retourné le bon de commande</Text>
+            </View>
+          </TouchableOpacity>
+
           {/* Bon de transport Walterre */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Bon de transport Walterre</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>Bon de transport Walterre</Text>
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>
@@ -183,8 +227,72 @@ export default function DocumentsChantier() {
             />
           </View>
 
+          {/* Planning versages prévus par jour */}
+          <View style={[styles.planningHeader]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, flex: 1, marginBottom: 0 }]}>Versages prévus par jour</Text>
+            <TouchableOpacity onPress={addPlanningRow} style={[styles.addRowBtn, { backgroundColor: colors.primary }]}>
+              <Text style={styles.addRowBtnText}>+ Ajouter</Text>
+            </TouchableOpacity>
+          </View>
+
+          {planningVersages.length === 0 ? (
+            <View style={[styles.emptyPlanning, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.emptyPlanningText, { color: colors.muted }]}>Aucun versage prévu planifié. Appuyez sur "+ Ajouter" pour encoder les jours de versage prévus.</Text>
+            </View>
+          ) : (
+            <View style={styles.planningTable}>
+              {/* En-tête */}
+              <View style={[styles.planningRow, styles.planningHeaderRow, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.planningColHeader, { color: colors.muted, flex: 2 }]}>Date</Text>
+                <Text style={[styles.planningColHeader, { color: colors.muted, flex: 1.5 }]}>Tonnage (T)</Text>
+                <Text style={[styles.planningColHeader, { color: colors.muted, flex: 2 }]}>Notes</Text>
+                <View style={{ width: 28 }} />
+              </View>
+              {planningVersages.map((row, idx) => (
+                <View key={idx} style={[styles.planningRow, { borderColor: colors.border }]}>
+                  {Platform.OS === 'web' ? (
+                    <View style={[styles.planningCell, { flex: 2 }]}>
+                      <input
+                        type="date"
+                        value={row.date}
+                        onChange={(e: any) => updatePlanningRow(idx, 'date', e.target.value)}
+                        style={{ border: 'none', background: 'transparent', fontSize: 13, color: colors.foreground, outline: 'none', width: '100%', fontFamily: 'inherit' }}
+                      />
+                    </View>
+                  ) : (
+                    <TextInput
+                      style={[styles.planningInput, { flex: 2, color: colors.foreground }]}
+                      value={row.date}
+                      onChangeText={v => updatePlanningRow(idx, 'date', v)}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor={colors.muted}
+                    />
+                  )}
+                  <TextInput
+                    style={[styles.planningInput, { flex: 1.5, color: colors.foreground }]}
+                    value={row.tonnagePrev}
+                    onChangeText={v => updatePlanningRow(idx, 'tonnagePrev', v)}
+                    placeholder="Ex: 200"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.planningInput, { flex: 2, color: colors.foreground }]}
+                    value={row.notes}
+                    onChangeText={v => updatePlanningRow(idx, 'notes', v)}
+                    placeholder="Optionnel"
+                    placeholderTextColor={colors.muted}
+                  />
+                  <TouchableOpacity onPress={() => removePlanningRow(idx)} style={styles.removeRowBtn}>
+                    <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '700' }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Transporteurs depuis la base */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Transporteurs autorisés</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>Transporteurs autorisés</Text>
 
           {transporteursQuery.isLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />
@@ -285,4 +393,21 @@ const styles = StyleSheet.create({
     gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 8,
   },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  // Bon de commande signé
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1.5, padding: 14, marginBottom: 16 },
+  checkLabel: { fontSize: 15, fontWeight: '600' },
+  checkSub: { fontSize: 12, marginTop: 2 },
+  // Planning versages
+  planningHeader: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 10 },
+  addRowBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  addRowBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  emptyPlanning: { borderRadius: 10, borderWidth: 1, padding: 14, marginBottom: 16 },
+  emptyPlanningText: { fontSize: 13, lineHeight: 18 },
+  planningTable: { borderRadius: 10, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  planningRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, minHeight: 44 },
+  planningHeaderRow: { paddingHorizontal: 8, paddingVertical: 8 },
+  planningColHeader: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  planningCell: { paddingHorizontal: 8, paddingVertical: 10 },
+  planningInput: { paddingHorizontal: 8, paddingVertical: 10, fontSize: 13, borderRightWidth: 0.5, borderColor: '#E5E7EB', minHeight: 44 },
+  removeRowBtn: { width: 28, alignItems: 'center', justifyContent: 'center' },
 });

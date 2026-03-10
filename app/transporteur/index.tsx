@@ -20,7 +20,16 @@ export default function TransporteursScreen() {
   const { data: transporteurs = [], isLoading } = trpc.transporteurs.list.useQuery();
 
   const createMutation = trpc.transporteurs.create.useMutation({
-    onSuccess: () => { utils.transporteurs.list.invalidate(); setModalVisible(false); resetForm(); },
+    onSuccess: (data: any) => {
+      utils.transporteurs.list.invalidate();
+      setModalVisible(false);
+      resetForm();
+      if (data.mailEnvoye) {
+        showAlert('Transporteur ajouté', 'Le transporteur a été enregistré et les conditions d\'accès au site lui ont été envoyées par email.');
+      } else {
+        showAlert('Transporteur ajouté', 'Le transporteur a été enregistré. Aucun email n\'a été envoyé (pas d\'adresse email renseignée).');
+      }
+    },
     onError: (err: any) => showAlert('Erreur', err.message),
   });
   const updateMutation = trpc.transporteurs.update.useMutation({
@@ -136,6 +145,15 @@ export default function TransporteursScreen() {
                   <Text style={[styles.cardNom, { color: colors.foreground }]}>{t.nom}</Text>
                   {t.telephone ? <Text style={[styles.cardDetail, { color: colors.muted }]}>{t.telephone}</Text> : null}
                   {t.email ? <Text style={[styles.cardDetail, { color: colors.muted }]}>{t.email}</Text> : null}
+                  <View style={styles.mailBadgeRow}>
+                    {t.email ? (
+                      t.mailConditionsEnvoye
+                        ? <View style={styles.mailBadgeOk}><Text style={styles.mailBadgeOkText}>✓ Conditions envoyées</Text></View>
+                        : <View style={styles.mailBadgePending}><Text style={styles.mailBadgePendingText}>⏳ Mail non envoyé</Text></View>
+                    ) : (
+                      <View style={styles.mailBadgeNo}><Text style={styles.mailBadgeNoText}>Pas d'email</Text></View>
+                    )}
+                  </View>
                 </View>
               </View>
               <View style={styles.cardActions}>
@@ -244,4 +262,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '500' },
   input: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15 },
   errorText: { fontSize: 12, color: '#EF4444' },
+  mailBadgeRow: { marginTop: 4 },
+  mailBadgeOk: { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start' },
+  mailBadgeOkText: { fontSize: 11, color: '#065F46', fontWeight: '600' },
+  mailBadgePending: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start' },
+  mailBadgePendingText: { fontSize: 11, color: '#92400E', fontWeight: '500' },
+  mailBadgeNo: { backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start' },
+  mailBadgeNoText: { fontSize: 11, color: '#6B7280', fontWeight: '400' },
 });

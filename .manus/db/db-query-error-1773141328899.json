@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `siteVersage` varchar(255);\nALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `bonCommandeSigne` boolean DEFAULT false;\nALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `planningVersages` text;\nALTER TABLE `transporteurs` ADD COLUMN IF NOT EXISTS `mailConditionsEnvoye` boolean NOT NULL DEFAULT false;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute ALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `siteVersage` varchar(255);\nALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `bonCommandeSigne` boolean DEFAULT false;\nALTER TABLE `chantiers` ADD COLUMN IF NOT EXISTS `planningVersages` text;\nALTER TABLE `transporteurs` ADD COLUMN IF NOT EXISTS `mailConditionsEnvoye` boolean NOT NULL DEFAULT false;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 4: Table 'kkmfyarn7zrm9ulq2tuynk.transporteurs' doesn't exist"
+  ]
+}

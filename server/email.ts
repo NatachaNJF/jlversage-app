@@ -211,3 +211,53 @@ export function emailVolumeAtteint(
     text: `Volume atteint pour le chantier ${referenceWalterre}. Tonnage accepté : ${tonnageAccepte.toFixed(2)} T.`,
   };
 }
+
+export function emailConditionsAccesTransporteur(
+  transporteurNom: string,
+  transporteurEmail: string,
+) {
+  return {
+    to: transporteurEmail,
+    subject: "JL Versage — Conditions d'accès au site de versage",
+    html: `
+      <p>Bonjour,</p>
+      <p>Nous avons bien enregistré votre société <strong>${transporteurNom}</strong> comme transporteur autorisé sur notre site de versage de Transinne.</p>
+      <p>Veuillez prendre connaissance des conditions d'accès ci-dessous :</p>
+      <table style="border-collapse:collapse;width:100%;max-width:600px">
+        <tr style="background:#2d6a4f;color:#fff">
+          <td colspan="2" style="padding:10px;font-weight:bold">Conditions d'accès — Site de versage JL Versage (Transinne)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold;width:40%">Documents obligatoires</td>
+          <td style="padding:8px;border:1px solid #ddd">Chaque camion doit présenter un <strong>bon Walterre valide</strong> à l'arrivée. Sans bon valide, le camion sera refusé sans dérogation.</td>
+        </tr>
+        <tr style="background:#f9f9f9">
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Horaires d'accès</td>
+          <td style="padding:8px;border:1px solid #ddd">Lundi au vendredi : 07h00 – 17h00<br>Samedi : 07h00 – 12h00 (sur rendez-vous)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Classe de terres acceptées</td>
+          <td style="padding:8px;border:1px solid #ddd"><strong>Classe 1 et 2 uniquement</strong> (conformément à la réglementation Walterre)</td>
+        </tr>
+        <tr style="background:#f9f9f9">
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Référence chantier</td>
+          <td style="padding:8px;border:1px solid #ddd">Le chauffeur doit communiquer la référence du chantier à l'arrivée.</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Contrôle visuel</td>
+          <td style="padding:8px;border:1px solid #ddd">Tout chargement suspect peut être refusé après contrôle visuel par le préposé.</td>
+        </tr>
+        <tr style="background:#f9f9f9">
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Paiement</td>
+          <td style="padding:8px;border:1px solid #ddd">Selon les conditions convenues avec le gestionnaire du chantier. En cas de finances non saines, le paiement peut être réclamé au chauffeur à chaque versage.</td>
+        </tr>
+      </table>
+      <p style="background:#fff3cd;padding:12px;border-left:4px solid #ffc107;margin-top:16px">
+        <strong>Important :</strong> Le non-respect de ces conditions entraîne le refus immédiat du chargement. En cas de doute, contactez-nous avant de vous déplacer.
+      </p>
+      <p>Pour toute question, n'hésitez pas à nous contacter.</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
+    `,
+    text: `Bonjour ${transporteurNom},\n\nConditions d'accès au site de versage JL Versage (Transinne) :\n- Bon Walterre valide obligatoire\n- Horaires : lun-ven 07h-17h, sam 07h-12h\n- Classes 1 et 2 uniquement\n- Référence chantier à communiquer à l'arrivée\n\nCordialement,\nJL Versage`,
+  };
+}

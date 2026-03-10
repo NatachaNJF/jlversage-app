@@ -73,9 +73,10 @@ export default function NouveauChantierScreen() {
   const [contactChantier, setContactChantier] = useState('');
   const [telephoneChantier, setTelephoneChantier] = useState('');
   const [volumeEstime, setVolumeEstime] = useState('');
-  const [classe, setClasse] = useState<number>(1);
+  const [classe, setClasse] = useState<number | null>(null);
   const [periodeDebut, setPeriodeDebut] = useState('');
   const [periodeFin, setPeriodeFin] = useState('');
+  const [siteVersage, setSiteVersage] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -99,9 +100,10 @@ export default function NouveauChantierScreen() {
     else if (!phoneBeRegex.test(telephoneChantier.replace(/\s/g, ''))) e.telephoneChantier = 'Format belge requis';
     if (!volumeEstime.trim()) e.volumeEstime = 'Volume estimé requis';
     else if (isNaN(Number(volumeEstime)) || Number(volumeEstime) <= 0) e.volumeEstime = 'Volume doit être un nombre positif';
-    if (!periodeDebut.trim()) e.periodeDebut = 'Date de début requise';
+    if (classe === null) e.classe = 'Classe de terre requise';
+    if (!periodeDebut.trim()) e.periodeDebut = 'Date de début du versage requise';
     else if (!dateRegex.test(periodeDebut)) e.periodeDebut = 'Format YYYY-MM-DD requis (ex: 2026-03-01)';
-    if (!periodeFin.trim()) e.periodeFin = 'Date de fin requise';
+    if (!periodeFin.trim()) e.periodeFin = 'Date de fin du versage requise';
     else if (!dateRegex.test(periodeFin)) e.periodeFin = 'Format YYYY-MM-DD requis (ex: 2026-12-31)';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -109,7 +111,7 @@ export default function NouveauChantierScreen() {
 
   function handleSubmit() {
     if (!validate()) return;
-    if (classe > 2) {
+    if (classe !== null && classe > 2) {
       showConfirm(
         'Attention — Classe incompatible',
         `La classe ${classe} n'est pas acceptée (classes 1 et 2 uniquement). Le dossier sera automatiquement refusé. Continuer ?`,
@@ -127,7 +129,8 @@ export default function NouveauChantierScreen() {
       societeContact: societeContact.trim(), societeTelephone: societeTelephone.replace(/\s/g, ''),
       localisationChantier: localisation.trim(), contactChantier: contactChantier.trim(),
       telephoneChantier: telephoneChantier.replace(/\s/g, ''),
-      volumeEstime: Number(volumeEstime), classe, periodeDebut, periodeFin,
+      volumeEstime: Number(volumeEstime), classe: classe!, periodeDebut, periodeFin,
+      siteVersage: siteVersage.trim() || undefined,
       notes: notes.trim() || undefined,
     });
   }
@@ -162,7 +165,7 @@ export default function NouveauChantierScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {classe > 2 && (
+        {classe !== null && classe > 2 && (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>⚠️ Classe {classe} non acceptée — refus automatique + email au client.</Text>
           </View>
@@ -199,18 +202,21 @@ export default function NouveauChantierScreen() {
         <Field label="Volume estimé (T)" required error={errors.volumeEstime}>
           <Input value={volumeEstime} onChangeText={setVolumeEstime} placeholder="Ex: 5000" keyboardType="numeric" error={errors.volumeEstime} />
         </Field>
-        <Field label="Classe de terre" required>
+        <Field label="Classe de terre" required error={errors.classe}>
           <View style={styles.classeRow}>
             {CLASSES.map(c => (
               <Pressable key={c} onPress={() => setClasse(c)}
-                style={[styles.classeBtn, { backgroundColor: classe === c ? (c > 2 ? '#EF4444' : colors.primary) : colors.surface, borderColor: classe === c ? (c > 2 ? '#EF4444' : colors.primary) : colors.border }]}>
+                style={[styles.classeBtn, { backgroundColor: classe === c ? (c > 2 ? '#EF4444' : colors.primary) : colors.surface, borderColor: errors.classe && classe === null ? '#EF4444' : classe === c ? (c > 2 ? '#EF4444' : colors.primary) : colors.border }]}>
                 <Text style={[styles.classeBtnText, { color: classe === c ? '#fff' : colors.muted }]}>{c}</Text>
               </Pressable>
             ))}
           </View>
-          {classe > 2 && <Text style={styles.classeWarning}>Classes 3, 4, 5 → refus automatique</Text>}
+          {classe !== null && classe > 2 && <Text style={styles.classeWarning}>Classes 3, 4, 5 → refus automatique</Text>}
         </Field>
-        <Field label="Date de début" required error={errors.periodeDebut}>
+        <Field label="Versage à (site)">
+          <Input value={siteVersage} onChangeText={setSiteVersage} placeholder="Ex: Transinne" />
+        </Field>
+        <Field label="Date de début du versage" required error={errors.periodeDebut}>
           {Platform.OS === 'web' ? (
             <View style={[styles.input, { backgroundColor: colors.surface, borderColor: errors.periodeDebut ? '#EF4444' : colors.border, justifyContent: 'center' }]}>
               <input
@@ -225,7 +231,7 @@ export default function NouveauChantierScreen() {
             <Input value={periodeDebut} onChangeText={setPeriodeDebut} placeholder="YYYY-MM-DD (ex: 2026-03-01)" error={errors.periodeDebut} />
           )}
         </Field>
-        <Field label="Date de fin" required error={errors.periodeFin}>
+        <Field label="Date de fin du versage" required error={errors.periodeFin}>
           {Platform.OS === 'web' ? (
             <View style={[styles.input, { backgroundColor: colors.surface, borderColor: errors.periodeFin ? '#EF4444' : colors.border, justifyContent: 'center' }]}>
               <input

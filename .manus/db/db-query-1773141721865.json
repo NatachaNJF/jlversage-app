@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS bonCommandeSigne BOOLEAN DEFAULT FALSE",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS bonCommandeSigne BOOLEAN DEFAULT FALSE",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 137
+}

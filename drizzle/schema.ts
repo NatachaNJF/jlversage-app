@@ -80,6 +80,7 @@ export const chantiers = pgTable("chantiers", {
   telephoneChantier: varchar("telephoneChantier", { length: 30 }).notNull(),
   volumeEstime: doublePrecision("volumeEstime").notNull(),
   classe: integer("classe").notNull(), // 1-5
+  siteVersage: varchar("siteVersage", { length: 255 }), // site de versage (ex: Transinne)
   periodeDebut: varchar("periodeDebut", { length: 10 }).notNull(), // YYYY-MM-DD
   periodeFin: varchar("periodeFin", { length: 10 }).notNull(),
 
@@ -93,9 +94,11 @@ export const chantiers = pgTable("chantiers", {
   referenceWalterre: varchar("referenceWalterre", { length: 100 }),
   certificatQualite: boolean("certificatQualite").default(false),
   rapportAnalyse: boolean("rapportAnalyse").default(false),
+  bonCommandeSigne: boolean("bonCommandeSigne").default(false),
   volumeDeclare: doublePrecision("volumeDeclare"),
   regimeApplicable: varchar("regimeApplicable", { length: 100 }),
   transporteurs: text("transporteurs"), // JSON array stringifié
+  planningVersages: text("planningVersages"), // JSON array [{date, tonnagePrev, notes}]
 
   // Validation admin
   validationClasse: boolean("validationClasse").default(false),
@@ -215,6 +218,7 @@ export const transporteurs = pgTable("transporteurs", {
   telephone: varchar("telephone", { length: 30 }),
   email: varchar("email", { length: 320 }),
   actif: boolean("actif").default(true).notNull(),
+  mailConditionsEnvoye: boolean("mailConditionsEnvoye").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

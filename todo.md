@@ -153,3 +153,11 @@
 
 - [x] Site vitrine : section témoignages clients avec citations et photos
 - [x] App mobile : écran pré-validation chantier (timing versage + finances saines) avant validation client
+- [ ] Refus automatique classe > 2 depuis site vitrine (demandePublique.soumettre)
+- [ ] Libellés "date de début du versage" et "date de fin du versage" dans la fiche chantier
+- [ ] Classe sans valeur par défaut dans le formulaire de création
+- [ ] Champ "versage à (site)" dans la fiche chantier
+- [ ] Mail conditions d'accès au site pour les transporteurs (envoi automatique à la création)
+- [ ] Coche "mail conditions envoyé" dans la table et l'interface transporteurs
+- [ ] Coche "bon de commande signé" dans l'étape documents Walterre
+- [ ] Tableau planning versages prévus par jour dans l'étape documents Walterre

@@ -9,6 +9,7 @@ import { sdk } from "./_core/sdk";
 import * as db from "./db";
 import {
   emailAutorisation,
+  emailConditionsAccesTransporteur,
   emailNouvelUtilisateurCreation,
   emailOffrePrix,
   emailRefusClasse,
@@ -37,6 +38,7 @@ const chantierBaseSchema = societeSchema.extend({
   classe: z.number().int().min(1).max(5),
   periodeDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
   periodeFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+  siteVersage: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -230,9 +232,29 @@ export const appRouter = router({
         return { success: true };
       }),
     saisirDocuments: gestionnaireOnly
-      .input(z.object({ id: z.number(), referenceWalterre: z.string().min(1), certificatQualite: z.boolean(), rapportAnalyse: z.boolean(), volumeDeclare: z.number().positive(), regimeApplicable: z.string().min(1), transporteurs: z.array(z.string()).min(1) }))
+      .input(z.object({
+        id: z.number(),
+        referenceWalterre: z.string().min(1),
+        certificatQualite: z.boolean(),
+        rapportAnalyse: z.boolean(),
+        volumeDeclare: z.number().positive(),
+        regimeApplicable: z.string().min(1),
+        transporteurs: z.array(z.string()).min(1),
+        bonCommandeSigne: z.boolean().optional(),
+        planningVersages: z.array(z.object({ date: z.string(), tonnagePrev: z.number(), notes: z.string() })).optional(),
+      }))
       .mutation(async ({ input }) => {
-        await db.updateChantier(input.id, { referenceWalterre: input.referenceWalterre, certificatQualite: input.certificatQualite, rapportAnalyse: input.rapportAnalyse, volumeDeclare: input.volumeDeclare, regimeApplicable: input.regimeApplicable, transporteurs: JSON.stringify(input.transporteurs), statut: "validation_admin" });
+        await db.updateChantier(input.id, {
+          referenceWalterre: input.referenceWalterre,
+          certificatQualite: input.certificatQualite,
+          rapportAnalyse: input.rapportAnalyse,
+          volumeDeclare: input.volumeDeclare,
+          regimeApplicable: input.regimeApplicable,
+          transporteurs: JSON.stringify(input.transporteurs),
+          bonCommandeSigne: input.bonCommandeSigne ?? false,
+          planningVersages: JSON.stringify(input.planningVersages ?? []),
+          statut: "validation_admin",
+        });
         return { success: true };
       }),
     validerAdmin: gestionnaireOnly
@@ -383,6 +405,18 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
+        if (input.classe > 2) {
+          const id = await db.createChantier({
+            ...input,
+            societeTva: input.societeTva || "",
+            contactChantier: input.contactChantier || input.societeContact,
+            telephoneChantier: input.telephoneChantier || input.societeTelephone,
+            statut: "refuse",
+            createdByUserId: null as any,
+          });
+          await sendEmail(emailRefusClasse(input.societeNom, input.societeMail, input.classe));
+          return { success: true, id, refused: true, reason: "classe_incompatible" };
+        }
         const id = await db.createChantier({
           ...input,
           societeTva: input.societeTva || "",
@@ -391,7 +425,7 @@ export const appRouter = router({
           statut: "demande",
           createdByUserId: null as any,
         });
-        return { success: true, id };
+        return { success: true, id, refused: false };
       }),
   }),
 
@@ -405,7 +439,15 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const id = await db.createTransporteur({ nom: input.nom, telephone: input.telephone || null, email: input.email || null });
-        return { id };
+        let mailEnvoye = false;
+        if (input.email) {
+          const ok = await sendEmail(emailConditionsAccesTransporteur(input.nom, input.email));
+          if (ok) {
+            await db.updateTransporteur(id, { mailConditionsEnvoye: true });
+            mailEnvoye = true;
+          }
+        }
+        return { id, mailEnvoye };
       }),
     update: gestionnaireOnly
       .input(z.object({
