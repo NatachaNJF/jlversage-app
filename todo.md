@@ -174,3 +174,12 @@
 ## Registre v15 — Détail passage et filtres
 - [x] Filtre acceptés/refusés dans le registre (boutons Tous / Acceptés / Refusés)
 - [x] Page de détail d'un passage (photo, motif refus, contrôles, anomalies)
+
+## Analyse chantier v16 — Refonte workflow
+- [x] Supprimer le champ "Versage à (site)" du formulaire de création chantier
+- [x] Refondre l'écran d'analyse en 2 sous-étapes : 1) capacité de versage (planning), 2) analyse financière
+- [x] Étape 1 analyse : afficher le planning des versages prévus, permettre de valider ou refuser la capacité
+- [x] Si refus capacité : email de refus expliquant le motif (planning complet)
+- [x] Étape 2 analyse : analyse financière (situation saine ou non)
+- [x] Si situation saine : envoi offre de prix standard
+- [x] Si situation non saine : envoi offre de prix avec condition paiement au comptant

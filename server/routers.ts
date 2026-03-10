@@ -12,6 +12,8 @@ import {
   emailConditionsAccesTransporteur,
   emailNouvelUtilisateurCreation,
   emailOffrePrix,
+  emailOffrePrixComptant,
+  emailRefusCapacite,
   emailRefusClasse,
   emailRefusValidation,
   emailVolumeAtteint,
@@ -187,6 +189,25 @@ export const appRouter = router({
 
   chantiers: router({
     list: protectedProcedure.query(() => db.getAllChantiers()),
+    planningGlobal: protectedProcedure.query(async () => {
+      const tous = await db.getAllChantiers();
+      const actifs = tous.filter((c: any) => ['autorise', 'en_cours', 'offre_envoyee', 'documents_demandes', 'validation_admin'].includes(c.statut));
+      const jours: Record<string, { tonnagePrev: number; chantiers: string[] }> = {};
+      for (const c of actifs) {
+        if (!c.planningVersages) continue;
+        try {
+          const planning = JSON.parse(c.planningVersages as string) as { date: string; tonnagePrev: number; notes?: string }[];
+          for (const v of planning) {
+            if (!jours[v.date]) jours[v.date] = { tonnagePrev: 0, chantiers: [] };
+            jours[v.date].tonnagePrev += v.tonnagePrev || 0;
+            jours[v.date].chantiers.push(c.societeNom);
+          }
+        } catch {}
+      }
+      return Object.entries(jours)
+        .map(([date, info]) => ({ date, tonnagePrev: info.tonnagePrev, chantiers: info.chantiers }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
@@ -216,13 +237,29 @@ export const appRouter = router({
         await db.updateChantier(input.id, input.data);
         return { success: true };
       }),
+    refuserCapacite: gestionnaireOnly
+      .input(z.object({ id: z.number(), commentaire: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        const motif = input.commentaire
+          ? `Planning de versage complet sur la période demandée. ${input.commentaire}`
+          : "Notre planning de versage est complet sur la période demandée (${chantier.periodeDebut} – ${chantier.periodeFin}). Nous ne pouvons pas accepter de nouvelles livraisons sur cette période.";
+        await db.updateChantier(input.id, { statut: "refuse", motifRefusAdmin: motif, dateRefus: new Date().toISOString().split("T")[0] });
+        await sendEmail(emailRefusCapacite(chantier.societeNom, chantier.societeMail, chantier.periodeDebut, chantier.periodeFin, input.commentaire));
+        return { success: true };
+      }),
     envoyerOffre: gestionnaireOnly
-      .input(z.object({ id: z.number(), prixTonne: z.number().positive(), conditionsAcceptation: z.string().min(1) }))
+      .input(z.object({ id: z.number(), prixTonne: z.number().positive(), conditionsAcceptation: z.string().min(1), paiementComptant: z.boolean().optional() }))
       .mutation(async ({ input }) => {
         const chantier = await db.getChantierById(input.id);
         if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
         await db.updateChantier(input.id, { prixTonne: input.prixTonne.toString(), conditionsAcceptation: input.conditionsAcceptation, statut: "offre_envoyee" });
-        await sendEmail(emailOffrePrix(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
+        if (input.paiementComptant) {
+          await sendEmail(emailOffrePrixComptant(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
+        } else {
+          await sendEmail(emailOffrePrix(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
+        }
         return { success: true };
       }),
     confirmerAccordClient: gestionnaireOnly

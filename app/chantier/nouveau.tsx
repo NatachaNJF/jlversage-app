@@ -76,7 +76,6 @@ export default function NouveauChantierScreen() {
   const [classe, setClasse] = useState<number | null>(null);
   const [periodeDebut, setPeriodeDebut] = useState('');
   const [periodeFin, setPeriodeFin] = useState('');
-  const [siteVersage, setSiteVersage] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -130,7 +129,6 @@ export default function NouveauChantierScreen() {
       localisationChantier: localisation.trim(), contactChantier: contactChantier.trim(),
       telephoneChantier: telephoneChantier.replace(/\s/g, ''),
       volumeEstime: Number(volumeEstime), classe: classe!, periodeDebut, periodeFin,
-      siteVersage: siteVersage.trim() || undefined,
       notes: notes.trim() || undefined,
     });
   }
@@ -212,9 +210,6 @@ export default function NouveauChantierScreen() {
             ))}
           </View>
           {classe !== null && classe > 2 && <Text style={styles.classeWarning}>Classes 3, 4, 5 → refus automatique</Text>}
-        </Field>
-        <Field label="Versage à (site)">
-          <Input value={siteVersage} onChangeText={setSiteVersage} placeholder="Ex: Transinne" />
         </Field>
         <Field label="Date de début du versage" required error={errors.periodeDebut}>
           {Platform.OS === 'web' ? (

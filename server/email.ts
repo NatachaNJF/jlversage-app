@@ -261,3 +261,57 @@ export function emailConditionsAccesTransporteur(
     text: `Bonjour ${transporteurNom},\n\nConditions d'accès au site de versage JL Versage (Transinne) :\n- Bon Walterre valide obligatoire\n- Horaires : lun-ven 07h-17h, sam 07h-12h\n- Classes 1 et 2 uniquement\n- Référence chantier à communiquer à l'arrivée\n\nCordialement,\nJL Versage`,
   };
 }
+
+export function emailRefusCapacite(
+  societeNom: string,
+  societeEmail: string,
+  periodeDebut: string,
+  periodeFin: string,
+  commentaire?: string,
+) {
+  return {
+    to: societeEmail,
+    subject: "JL Versage — Demande de versage refusée — Planning complet",
+    html: `
+      <p>Bonjour,</p>
+      <p>Nous avons bien reçu votre demande de versage pour la société <strong>${societeNom}</strong>.</p>
+      <p>Malheureusement, nous ne pouvons pas donner suite à votre demande car notre planning de versage est complet sur la période demandée (<strong>${periodeDebut} – ${periodeFin}</strong>).</p>
+      ${commentaire ? `<p><strong>Précision :</strong> ${commentaire}</p>` : ''}
+      <p>N'hésitez pas à nous recontacter si vous souhaitez nous soumettre une demande sur une autre période.</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne</p>
+    `,
+    text: `Bonjour,\n\nNous ne pouvons pas donner suite à votre demande. Notre planning de versage est complet sur la période ${periodeDebut} – ${periodeFin}.\n${commentaire ? `\n${commentaire}\n` : ''}\nCordialement,\nJL Versage`,
+  };
+}
+
+export function emailOffrePrixComptant(
+  societeNom: string,
+  societeEmail: string,
+  prixTonne: number,
+  conditions: string,
+  periodeDebut: string,
+  periodeFin: string,
+) {
+  return {
+    to: societeEmail,
+    subject: "JL Versage — Offre de prix pour versage de terres",
+    html: `
+      <p>Bonjour,</p>
+      <p>Suite à votre demande, nous avons le plaisir de vous soumettre notre offre de prix pour le versage de terres sur notre site de Transinne.</p>
+      <table style="border-collapse:collapse;width:100%;max-width:500px">
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Prix à la tonne</td><td style="padding:8px;border:1px solid #ddd"><strong>${prixTonne.toFixed(2)} €/T</strong></td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Période</td><td style="padding:8px;border:1px solid #ddd">${periodeDebut} au ${periodeFin}</td></tr>
+      </table>
+      <p><strong>Conditions d'acceptation :</strong><br>${conditions}</p>
+      <p style="background:#fef3c7;padding:12px;border-left:4px solid #f59e0b">
+        <strong>Condition de paiement particulière :</strong> En raison de la situation financière de votre dossier, le paiement sera exigé <strong>au comptant à chaque versage</strong>. Le chauffeur devra s'acquitter du montant correspondant au tonnage déchargé avant de quitter le site.
+      </p>
+      <p style="background:#fff3cd;padding:12px;border-left:4px solid #ffc107">
+        <strong>Important :</strong> Terres conformes Walterre obligatoires. Tout camion non conforme sera refusé sans dérogation. La facturation est basée sur le tonnage réellement accepté.
+      </p>
+      <p>Pour confirmer cette offre, veuillez répondre à cet email ou contacter notre équipe.</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne</p>
+    `,
+    text: `Offre de prix JL Versage\n\nPrix : ${prixTonne.toFixed(2)} €/T\nPériode : ${periodeDebut} au ${periodeFin}\nConditions : ${conditions}\n\nATTENTION : Paiement exigé au comptant à chaque versage.\n\nTerres conformes Walterre obligatoires.`,
+  };
+}
