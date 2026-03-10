@@ -250,7 +250,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'validation_admin' ? (
               <>
-                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={handleAutoriser} loading={autoriserMutation.isPending} />
+                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={() => router.push((`/chantier/prevalidation/${id}`) as any)} loading={false} />
                 <ActionBtn label="❌ Refuser le dossier" color="#EF4444" onPress={() => setShowRefusModal(true)} loading={refuserMutation.isPending} />
               </>
             ) : null}

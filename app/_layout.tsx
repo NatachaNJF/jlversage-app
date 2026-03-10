@@ -92,6 +92,7 @@ export default function RootLayout() {
             <Stack.Screen name="chantier/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="chantier/nouveau" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chantier/validation/[id]" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="chantier/prevalidation/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chantier/offre/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chantier/documents/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="camion/nouveau" options={{ presentation: 'modal' }} />

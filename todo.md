@@ -150,3 +150,6 @@
 - [ ] Configurer le serveur Express pour servir l'app web (Expo web)
 - [ ] Fournir les URL publiques fonctionnelles
 - [ ] Fournir les accès Railway et base de données à Natacha
+
+- [x] Site vitrine : section témoignages clients avec citations et photos
+- [x] App mobile : écran pré-validation chantier (timing versage + finances saines) avant validation client
