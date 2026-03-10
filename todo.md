@@ -172,5 +172,5 @@
 - [x] Migrations base de données (siteVersage, bonCommandeSigne, planningVersages, mailConditionsEnvoye)
 
 ## Registre v15 — Détail passage et filtres
-- [ ] Filtre acceptés/refusés dans le registre (boutons Tous / Acceptés / Refusés)
-- [ ] Page de détail d'un passage (photo, motif refus, contrôles, anomalies)
+- [x] Filtre acceptés/refusés dans le registre (boutons Tous / Acceptés / Refusés)
+- [x] Page de détail d'un passage (photo, motif refus, contrôles, anomalies)
