@@ -33,13 +33,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function runMigrations() {
   try {
-    // Migration: créer la table transporteurs si elle n'existe pas
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) { console.warn("[Migration] DATABASE_URL non définie"); return; }
     const { Pool } = await import("pg");
     const migPool = new Pool({ connectionString: dbUrl });
-    // Supprimer l'ancienne table si elle a les mauvaises colonnes
-    await migPool.query(`DROP TABLE IF EXISTS transporteurs`);
+
+    // ── Table transporteurs ──────────────────────────────────────────────────
     await migPool.query(`
       CREATE TABLE IF NOT EXISTS transporteurs (
         id SERIAL PRIMARY KEY,
@@ -47,12 +46,24 @@ async function runMigrations() {
         telephone VARCHAR(50),
         email VARCHAR(320),
         actif BOOLEAN NOT NULL DEFAULT TRUE,
+        "mailConditionsEnvoye" BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
         "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       )
     `);
+    // Ajouter la colonne mailConditionsEnvoye si elle n'existe pas (migration idempotente)
+    await migPool.query(`
+      ALTER TABLE transporteurs
+        ADD COLUMN IF NOT EXISTS "mailConditionsEnvoye" BOOLEAN NOT NULL DEFAULT FALSE
+    `).catch(() => {}); // Ignorer si déjà existante
+
+    // ── Colonnes chantiers ajoutées récemment ────────────────────────────────
+    await migPool.query(`ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS "siteVersage" VARCHAR(255)`).catch(() => {});
+    await migPool.query(`ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS "bonCommandeSigne" BOOLEAN DEFAULT FALSE`).catch(() => {});
+    await migPool.query(`ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS "planningVersages" TEXT`).catch(() => {});
+
     await migPool.end();
-    console.log("[Migration] Table transporteurs OK");
+    console.log("[Migration] Toutes les migrations appliquées avec succès");
   } catch (err) {
     console.error("[Migration] Erreur:", err);
   }
