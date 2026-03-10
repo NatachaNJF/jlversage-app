@@ -170,3 +170,7 @@
 - [x] Coche "Bon de commande signé" dans l'écran documents Walterre
 - [x] Tableau planning versages prévus par jour dans l'écran documents Walterre
 - [x] Migrations base de données (siteVersage, bonCommandeSigne, planningVersages, mailConditionsEnvoye)
+
+## Registre v15 — Détail passage et filtres
+- [ ] Filtre acceptés/refusés dans le registre (boutons Tous / Acceptés / Refusés)
+- [ ] Page de détail d'un passage (photo, motif refus, contrôles, anomalies)

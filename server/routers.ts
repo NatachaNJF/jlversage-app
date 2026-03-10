@@ -306,6 +306,13 @@ export const appRouter = router({
 
   passages: router({
     list: protectedProcedure.query(() => db.getAllPassages()),
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const p = await db.getPassageById(input.id);
+        if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+        return p;
+      }),
     listByDate: protectedProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getPassagesByDate(input.date)),
     listByChantier: protectedProcedure.input(z.object({ chantierId: z.number() })).query(({ input }) => db.getPassagesByChantier(input.chantierId)),
     listByPeriod: protectedProcedure.input(z.object({ dateDebut: z.string(), dateFin: z.string() })).query(({ input }) => db.getPassagesByPeriod(input.dateDebut, input.dateFin)),

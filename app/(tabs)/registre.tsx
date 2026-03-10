@@ -3,6 +3,7 @@ import {
   ActivityIndicator, TextInput, Platform
 } from "react-native";
 import { useState, useMemo } from "react";
+import { router } from "expo-router";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -10,10 +11,14 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { getTodayBrussels, getDaysAgoBrussels, formatDateFr } from "@/lib/date";
 
-function PassageRow({ passage }: { passage: any }) {
+function PassageRow({ passage, onPress }: { passage: any; onPress: () => void }) {
   const colors = useColors();
   return (
-    <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.75}
+      style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}
+    >
       <View style={[styles.rowIndicator, { backgroundColor: passage.accepte ? colors.success : colors.error }]} />
       <View style={styles.rowContent}>
         <View style={styles.rowTop}>
@@ -26,6 +31,7 @@ function PassageRow({ passage }: { passage: any }) {
               <Text style={[styles.refusBadgeText, { color: colors.error }]}>Refusé</Text>
             </View>
           )}
+          <IconSymbol name="chevron.right" size={14} color={colors.muted} />
         </View>
         <Text style={[styles.rowChantier, { color: colors.muted }]} numberOfLines={1}>
           {passage.chantierNom}
@@ -42,11 +48,12 @@ function PassageRow({ passage }: { passage: any }) {
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 type FiltreType = 'aujourd_hui' | 'semaine' | 'mois' | 'date_libre';
+type FiltreAccepte = 'tous' | 'acceptes' | 'refuses';
 
 export default function RegistreScreen() {
   const colors = useColors();
@@ -56,9 +63,8 @@ export default function RegistreScreen() {
 
   const [filtre, setFiltre] = useState<FiltreType>('aujourd_hui');
   const [dateLibre, setDateLibre] = useState(today);
-  const [showDateInput, setShowDateInput] = useState(false);
+  const [filtreAccepte, setFiltreAccepte] = useState<FiltreAccepte>('tous');
 
-  // Calculer les dates de début/fin selon le filtre
   const { dateDebut, dateFin } = useMemo(() => {
     if (filtre === 'aujourd_hui') return { dateDebut: today, dateFin: today };
     if (filtre === 'semaine') return { dateDebut: weekAgo, dateFin: today };
@@ -73,16 +79,19 @@ export default function RegistreScreen() {
   const allPassages = passagesQuery.data ?? [];
 
   const passagesFiltres = useMemo(() => {
-    return [...allPassages].sort((a: any, b: any) => {
+    let list = [...allPassages];
+    if (filtreAccepte === 'acceptes') list = list.filter((p: any) => p.accepte);
+    if (filtreAccepte === 'refuses') list = list.filter((p: any) => !p.accepte);
+    return list.sort((a: any, b: any) => {
       const da = (a.date || '') + (a.heure || '');
       const db = (b.date || '') + (b.heure || '');
       return db.localeCompare(da);
     });
-  }, [allPassages]);
+  }, [allPassages, filtreAccepte]);
 
-  const totalAcceptes = passagesFiltres.filter((p: any) => p.accepte).length;
-  const totalRefus = passagesFiltres.filter((p: any) => !p.accepte).length;
-  const totalTonnage = passagesFiltres.filter((p: any) => p.accepte).reduce((s: number, p: any) => s + Number(p.tonnage), 0);
+  const totalAcceptes = allPassages.filter((p: any) => p.accepte).length;
+  const totalRefus = allPassages.filter((p: any) => !p.accepte).length;
+  const totalTonnage = allPassages.filter((p: any) => p.accepte).reduce((s: number, p: any) => s + Number(p.tonnage), 0);
 
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -106,11 +115,19 @@ export default function RegistreScreen() {
     { label: '📅 Date', val: 'date_libre' },
   ];
 
+  const FILTRES_ACCEPTE: { label: string; val: FiltreAccepte; color?: string }[] = [
+    { label: 'Tous', val: 'tous' },
+    { label: '✓ Acceptés', val: 'acceptes', color: colors.success },
+    { label: '✕ Refusés', val: 'refuses', color: colors.error },
+  ];
+
   return (
     <ScreenContainer containerClassName="bg-background">
       {/* En-tête */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.titre, { color: colors.foreground }]}>Registre</Text>
+
+        {/* Filtre période */}
         <View style={styles.filtreRow}>
           {FILTRES.map(f => (
             <TouchableOpacity
@@ -119,8 +136,6 @@ export default function RegistreScreen() {
                 filtre === f.val && { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={() => {
                 setFiltre(f.val);
-                if (f.val === 'date_libre') setShowDateInput(true);
-                else setShowDateInput(false);
               }}
               activeOpacity={0.75}
             >
@@ -152,7 +167,6 @@ export default function RegistreScreen() {
                 style={[styles.dateInput, { color: colors.foreground, borderColor: colors.border }]}
                 value={dateLibre}
                 onChangeText={v => {
-                  // Accepter seulement le format YYYY-MM-DD
                   if (/^\d{0,4}-?\d{0,2}-?\d{0,2}$/.test(v)) setDateLibre(v);
                 }}
                 placeholder="YYYY-MM-DD"
@@ -163,12 +177,36 @@ export default function RegistreScreen() {
             )}
           </View>
         )}
+
+        {/* Filtre acceptés / refusés */}
+        <View style={styles.filtreAccepteRow}>
+          {FILTRES_ACCEPTE.map(f => {
+            const isActive = filtreAccepte === f.val;
+            const activeColor = f.color || colors.primary;
+            return (
+              <TouchableOpacity
+                key={f.val}
+                style={[
+                  styles.filtreAccepteBtn,
+                  { borderColor: isActive ? activeColor : colors.border, backgroundColor: colors.surface },
+                  isActive && { backgroundColor: activeColor + '15' },
+                ]}
+                onPress={() => setFiltreAccepte(f.val)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filtreAccepteBtnText, { color: isActive ? activeColor : colors.muted, fontWeight: isActive ? '700' : '500' }]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {/* Résumé */}
       <View style={[styles.resume, { borderBottomColor: colors.border }]}>
         <View style={styles.resumeItem}>
-          <Text style={[styles.resumeValue, { color: colors.foreground }]}>{passagesFiltres.length}</Text>
+          <Text style={[styles.resumeValue, { color: colors.foreground }]}>{allPassages.length}</Text>
           <Text style={[styles.resumeLabel, { color: colors.muted }]}>Passages</Text>
         </View>
         <View style={[styles.resumeDivider, { backgroundColor: colors.border }]} />
@@ -209,13 +247,23 @@ export default function RegistreScreen() {
                   {item.items.length} passage{item.items.length > 1 ? 's' : ''}
                 </Text>
               </View>
-              {item.items.map((p: any) => <PassageRow key={p.id} passage={p} />)}
+              {item.items.map((p: any) => (
+                <PassageRow
+                  key={p.id}
+                  passage={p}
+                  onPress={() => router.push(`/passage/${p.id}` as any)}
+                />
+              ))}
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
               <IconSymbol name="list.bullet.clipboard.fill" size={48} color={colors.muted} />
-              <Text style={[styles.emptyText, { color: colors.muted }]}>Aucun passage enregistré</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>
+                {filtreAccepte === 'refuses' ? 'Aucun refus sur cette période' :
+                  filtreAccepte === 'acceptes' ? 'Aucun passage accepté sur cette période' :
+                    'Aucun passage enregistré'}
+              </Text>
               {filtre === 'date_libre' && (
                 <Text style={[styles.emptySubText, { color: colors.muted }]}>
                   {formatDateFr(dateLibre)}
@@ -237,6 +285,9 @@ const styles = StyleSheet.create({
   filtreRow: { flexDirection: 'row', gap: 8 },
   filtreBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   filtreBtnText: { fontSize: 12, fontWeight: '500' },
+  filtreAccepteRow: { flexDirection: 'row', gap: 8 },
+  filtreAccepteBtn: { flex: 1, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
+  filtreAccepteBtnText: { fontSize: 13 },
   dateInputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
@@ -270,6 +321,6 @@ const styles = StyleSheet.create({
   rowMeta: { flexDirection: 'row', gap: 4, marginTop: 2 },
   rowMetaText: { fontSize: 11 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 15 },
+  emptyText: { fontSize: 15, textAlign: 'center' },
   emptySubText: { fontSize: 13 },
 });

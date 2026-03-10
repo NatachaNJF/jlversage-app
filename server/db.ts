@@ -255,6 +255,13 @@ export async function getPassagesByPeriod(dateDebut: string, dateFin: string) {
   return db.select().from(passages).where(and(gte(passages.date, dateDebut), lte(passages.date, dateFin))).orderBy(desc(passages.date));
 }
 
+export async function getPassageById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(passages).where(eq(passages.id, id)).limit(1);
+  return result[0];
+}
+
 export async function createPassage(data: InsertPassage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
