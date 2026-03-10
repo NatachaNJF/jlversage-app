@@ -1,5 +1,7 @@
 import { and, desc, eq, gte, lte, count } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
+import { drizzle as drizzleMysql } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   chantiers,
   incidents,
@@ -8,6 +10,7 @@ import {
   InsertPassage,
   InsertTransporteur,
   InsertUser,
+  Passage,
   passages,
   transporteurs,
   users,
@@ -15,18 +18,39 @@ import {
 import { ENV } from "./_core/env";
 import { emailNouvelUtilisateur, sendEmail } from "./email";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: any | null = null;
+let _isMysql = false;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const url = process.env.DATABASE_URL;
+      if (url.startsWith("mysql://") || url.startsWith("mysql2://")) {
+        _isMysql = true;
+        const conn = await mysql.createConnection(url.replace(/^mysql2?:\/\//, "mysql://"));
+        _db = drizzleMysql(conn);
+      } else {
+        _isMysql = false;
+        _db = drizzlePg(url);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }
   return _db;
+}
+
+async function insertAndGetId(table: any, data: any): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (_isMysql) {
+    const result: any = await db.insert(table).values(data);
+    return result[0].insertId;
+  } else {
+    const result = await db.insert(table).values(data).returning({ id: (table as any).id });
+    return result[0].id;
+  }
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -144,7 +168,7 @@ export async function createLocalUser(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(users).values({
+  return insertAndGetId(users, {
     openId: data.openId,
     name: data.name,
     email: data.email,
@@ -154,8 +178,7 @@ export async function createLocalUser(data: {
     mustChangePassword: data.mustChangePassword ?? true,
     loginMethod: "local",
     lastSignedIn: new Date(),
-  }).returning({ id: users.id });
-  return result[0].id;
+  });
 }
 
 export async function updateUser(userId: number, data: Partial<InsertUser>) {
@@ -188,8 +211,7 @@ export async function getChantierById(id: number) {
 export async function createChantier(data: InsertChantier) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(chantiers).values(data).returning({ id: chantiers.id });
-  return result[0].id;
+  return insertAndGetId(chantiers, data);
 }
 
 export async function updateChantier(id: number, data: Partial<InsertChantier>) {
@@ -236,8 +258,7 @@ export async function getPassagesByPeriod(dateDebut: string, dateFin: string) {
 export async function createPassage(data: InsertPassage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(passages).values(data).returning({ id: passages.id });
-  const id = result[0].id;
+  const id = await insertAndGetId(passages, data);
   // Mettre à jour les tonnages du chantier
   const chantier = await getChantierById(data.chantierId);
   if (chantier) {
@@ -277,8 +298,7 @@ export async function getIncidentById(id: number) {
 export async function createIncident(data: InsertIncident) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(incidents).values(data).returning({ id: incidents.id });
-  return result[0].id;
+  return insertAndGetId(incidents, data);
 }
 
 export async function updateIncident(id: number, data: Partial<InsertIncident>) {
@@ -295,9 +315,9 @@ export async function getStatsJour(date: string) {
   const rows = await db.select().from(passages).where(eq(passages.date, date));
   return {
     totalCamions: rows.length,
-    acceptes: rows.filter((r) => r.accepte).length,
-    refuses: rows.filter((r) => !r.accepte).length,
-    tonnageAccepte: rows.filter((r) => r.accepte).reduce((s, r) => s + r.tonnage, 0),
+    acceptes: rows.filter((r: Passage) => r.accepte).length,
+    refuses: rows.filter((r: Passage) => !r.accepte).length,
+    tonnageAccepte: rows.filter((r: Passage) => r.accepte).reduce((s: number, r: Passage) => s + r.tonnage, 0),
   };
 }
 
@@ -320,8 +340,7 @@ export async function getAllTransporteurs() {
 export async function createTransporteur(data: InsertTransporteur) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(transporteurs).values(data).returning({ id: transporteurs.id });
-  return result[0].id;
+  return insertAndGetId(transporteurs, data);
 }
 
 export async function updateTransporteur(id: number, data: Partial<InsertTransporteur>) {

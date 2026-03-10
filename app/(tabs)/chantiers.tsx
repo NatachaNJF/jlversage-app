@@ -7,6 +7,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useAuthContext } from '@/lib/auth-context';
 import { trpc } from '@/lib/trpc';
 import { useColors } from '@/hooks/use-colors';
+import type { Chantier } from '@/drizzle/schema';
 
 const STATUTS = [
   { key: 'tous', label: 'Tous' },
@@ -43,7 +44,7 @@ export default function ChantiersScreen() {
   const chantiersQuery = trpc.chantiers.list.useQuery(undefined, { enabled: isAuthenticated });
   const chantiers = chantiersQuery.data ?? [];
 
-  const filtered = chantiers.filter(c => {
+  const filtered = chantiers.filter((c: Chantier) => {
     const matchSearch = !search ||
       c.societeNom.toLowerCase().includes(search.toLowerCase()) ||
       (c.localisationChantier || '').toLowerCase().includes(search.toLowerCase()) ||

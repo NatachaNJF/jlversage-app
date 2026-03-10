@@ -379,7 +379,7 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const [chantier, passagesData] = await Promise.all([db.getChantierById(input.chantierId), db.getFacturationChantier(input.chantierId, input.dateDebut, input.dateFin)]);
         if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
-        const totalTonnage = passagesData.reduce((s, p) => s + p.tonnage, 0);
+        const totalTonnage = passagesData.reduce((s: number, p: { tonnage: number }) => s + p.tonnage, 0);
         const prixTonne = Number(chantier.prixTonne) || 0;
         return { chantier, passages: passagesData, totalTonnage, prixTonne, montantTotal: totalTonnage * prixTonne };
       }),

@@ -11,6 +11,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import type { Chantier } from "@/drizzle/schema";
 import { MotifRefus, MOTIF_REFUS_LABELS } from "@/types";
 import { getNowBrussels } from "@/lib/date";
 
@@ -62,12 +63,12 @@ export default function NouveauCamion() {
   const [saving, setSaving] = useState(false);
 
   const chantiersAutorises = useMemo(
-    () => chantiers.filter(c => c.statut === 'autorise' || c.statut === 'en_cours'),
+    () => chantiers.filter((c: Chantier) => c.statut === 'autorise' || c.statut === 'en_cours'),
     [chantiers]
   );
 
   const chantierSelectionne = useMemo(
-    () => chantiers.find(c => c.id === chantierId),
+    () => chantiers.find((c: Chantier) => c.id === chantierId),
     [chantiers, chantierId]
   );
 
@@ -279,7 +280,7 @@ export default function NouveauCamion() {
                     <Text style={[styles.alertText, { color: colors.error }]}>Aucun chantier autorisé actuellement</Text>
                   </View>
                 ) : (
-                  chantiersAutorises.map(c => (
+                  chantiersAutorises.map((c: Chantier) => (
                     <TouchableOpacity
                       key={c.id}
                       style={[styles.chantierOption,
