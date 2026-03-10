@@ -1,0 +1,30 @@
+{
+  "query": "SELECT email, name, role FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute SELECT email, name, role FROM users;",
+  "rows": [
+    {
+      "email": "natacha.jerouville@jerouville.be",
+      "name": "natacha.jerouville",
+      "role": "admin"
+    },
+    {
+      "email": "gaelle.frauenkron@jerouville.be",
+      "name": "Gaëlle Frauenkron",
+      "role": "user"
+    },
+    {
+      "email": "natacha.jerouville@gmail.com",
+      "name": "Nat Jer",
+      "role": "user"
+    },
+    {
+      "email": "jessica.henrion@jerouville.be",
+      "name": "Jessica Henrion",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "email\tname\trole\nnatacha.jerouville@jerouville.be\tnatacha.jerouville\tadmin\ngaelle.frauenkron@jerouville.be\tGaëlle Frauenkron\tuser\nnatacha.jerouville@gmail.com\tNat Jer\tuser\njessica.henrion@jerouville.be\tJessica Henrion\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 198
+}
