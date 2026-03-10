@@ -183,3 +183,11 @@
 - [x] Étape 2 analyse : analyse financière (situation saine ou non)
 - [x] Si situation saine : envoi offre de prix standard
 - [x] Si situation non saine : envoi offre de prix avec condition paiement au comptant
+
+## Emails v17 — Mise à jour textes
+- [x] Email 1 : refus classe — ajouter invitation à recontacter si classe 1 ou 2
+- [x] Email 2 : refus capacité — préciser "si d'autres dates sont possibles"
+- [x] Email 3 : offre de prix — conditions détaillées en dur (Walterre, refus matériaux, classes 1-2, prix 9€/t avec réductions)
+- [x] Email 4 : offre comptant — ajouter "avant de décharger sur le site"
+- [x] Email 5 : autorisation — remettre les conditions détaillées (refus matériaux, classes 1-2)
+- [x] Email 7 : volume atteint — préciser qu'il faut un nouveau bon de transport Walterre
