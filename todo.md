@@ -202,3 +202,12 @@
 - [x] Déplacer l'écran analyse 2 étapes du statut validation_admin vers le statut analyse
 - [x] Supprimer l'ancienne modal d'offre directe au statut analyse
 - [x] Simplifier validation_admin : bouton "Autoriser" direct (sans les 2 étapes)
+
+## Site vitrine v20 — Corrections
+- [ ] Corriger horaires : Lun-Ven 7h-16h, fermé le samedi
+- [ ] Corriger email : jlversage@jerouville.be
+- [ ] Corriger classes : seules classes 1 et 2 acceptées (chiffre clé "2 classes" et tableau)
+- [ ] Supprimer la section témoignages
+- [ ] Ajouter lien Google Maps (placeholder en attendant l'adresse exacte)
+- [ ] Ajouter numéro de téléphone 061 23 03 40 (demandez Jessica)
+- [ ] Ajouter page mentions légales (Jérouville, BE413825754, Quartier Haynol 1, 6800 Libramont-Chevigny)

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mentions légales – JL Versage</title>
+  <meta name="description" content="Mentions légales du site JL Versage, site de versage de terres agréé à Transinne, Wallonie." />
+  <style>
+    :root {
+      --vert: #2d6a2d;
+      --vert-clair: #4a8c3f;
+      --vert-pale: #e8f5e9;
+      --gris: #f5f5f5;
+      --texte: #1a1a1a;
+      --texte-clair: #555;
+      --border: #ddd;
+      --blanc: #fff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; color: var(--texte); background: var(--blanc); }
+
+    nav {
+      background: var(--vert);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      text-decoration: none;
+    }
+    .nav-logo-text { color: #fff; }
+    .nav-logo-text strong { display: block; font-size: 1.1rem; font-weight: 700; }
+    .nav-logo-text span { font-size: 0.75rem; opacity: 0.85; }
+    .nav-back {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .nav-back:hover { background: rgba(255,255,255,0.15); }
+
+    .page-header {
+      background: linear-gradient(135deg, var(--vert) 0%, var(--vert-clair) 100%);
+      color: #fff;
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+    }
+    .page-header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .page-header p { opacity: 0.85; font-size: 0.95rem; }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    section { margin-bottom: 2.5rem; }
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--vert);
+      border-left: 4px solid var(--vert);
+      padding-left: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    p { line-height: 1.7; color: var(--texte-clair); margin-bottom: 0.75rem; }
+    p strong { color: var(--texte); }
+    a { color: var(--vert); }
+    a:hover { text-decoration: underline; }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 0.5rem 1rem;
+      background: var(--gris);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .info-label { font-weight: 600; color: var(--texte); font-size: 0.9rem; }
+    .info-value { color: var(--texte-clair); font-size: 0.9rem; }
+
+    footer {
+      background: #1a1a1a;
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.85rem;
+    }
+    footer strong { color: #fff; }
+    footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-text">
+      <strong>JL Versage</strong>
+      <span>Site de Transinne</span>
+    </div>
+  </a>
+  <a href="index.html" class="nav-back">← Retour au site</a>
+</nav>
+
+<div class="page-header">
+  <h1>Mentions légales</h1>
+  <p>Informations légales relatives au site internet jlversage.be</p>
+</div>
+
+<div class="container">
+
+  <section>
+    <h2>Éditeur du site</h2>
+    <div class="info-grid">
+      <span class="info-label">Dénomination</span>
+      <span class="info-value">Jérouville</span>
+      <span class="info-label">Numéro BCE / TVA</span>
+      <span class="info-value">BE 0413.825.754</span>
+      <span class="info-label">Siège social</span>
+      <span class="info-value">Quartier Haynol 1, 6800 Libramont-Chevigny, Belgique</span>
+      <span class="info-label">Téléphone</span>
+      <span class="info-value"><a href="tel:+3261230340">061 23 03 40</a></span>
+      <span class="info-label">Email</span>
+      <span class="info-value"><a href="mailto:jlversage@jerouville.be">jlversage@jerouville.be</a></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Site d'exploitation</h2>
+    <p>Le site de versage est situé à <strong>Transinne, Province de Luxembourg, Belgique</strong>. Il est agréé par les autorités wallonnes compétentes pour la réception de terres de déblais de classes 1 et 2 selon la réglementation Walterre.</p>
+  </section>
+
+  <section>
+    <h2>Hébergement</h2>
+    <p>Ce site est hébergé par <strong>Railway</strong> (Railway Corp., San Francisco, États-Unis). Pour toute question relative à l'hébergement : <a href="https://railway.app" target="_blank">railway.app</a>.</p>
+  </section>
+
+  <section>
+    <h2>Propriété intellectuelle</h2>
+    <p>L'ensemble du contenu de ce site (textes, images, logos, structure) est la propriété exclusive de Jérouville et est protégé par les lois belges et européennes relatives à la propriété intellectuelle.</p>
+    <p>Toute reproduction, représentation, modification ou exploitation, même partielle, de ce contenu est interdite sans autorisation écrite préalable.</p>
+  </section>
+
+  <section>
+    <h2>Protection des données personnelles (RGPD)</h2>
+    <p>Les données personnelles collectées via le formulaire de demande d'offre (nom, adresse, email, téléphone) sont utilisées exclusivement dans le cadre du traitement de votre demande et de la relation commerciale avec Jérouville.</p>
+    <p>Ces données ne sont pas transmises à des tiers et sont conservées pour une durée maximale de 5 ans à compter de la dernière interaction.</p>
+    <p>Conformément au Règlement Général sur la Protection des Données (RGPD – UE 2016/679), vous disposez d'un droit d'accès, de rectification, d'effacement et d'opposition concernant vos données personnelles. Pour exercer ces droits, contactez-nous à l'adresse : <a href="mailto:jlversage@jerouville.be">jlversage@jerouville.be</a>.</p>
+    <p>En cas de litige, vous pouvez introduire une réclamation auprès de l'<strong>Autorité de protection des données (APD)</strong> : <a href="https://www.autoriteprotectiondonnees.be" target="_blank">www.autoriteprotectiondonnees.be</a>.</p>
+  </section>
+
+  <section>
+    <h2>Cookies</h2>
+    <p>Ce site n'utilise pas de cookies de traçage ou de publicité. Seuls des cookies techniques strictement nécessaires au fonctionnement du site peuvent être utilisés.</p>
+  </section>
+
+  <section>
+    <h2>Limitation de responsabilité</h2>
+    <p>Jérouville s'efforce de maintenir les informations publiées sur ce site à jour et exactes. Toutefois, elle ne peut garantir l'exhaustivité, l'exactitude ou l'actualité des informations diffusées. La responsabilité de Jérouville ne saurait être engagée en cas d'erreur ou d'omission dans le contenu du site.</p>
+  </section>
+
+  <section>
+    <h2>Droit applicable</h2>
+    <p>Le présent site et ses mentions légales sont soumis au droit belge. Tout litige relatif à l'utilisation de ce site relève de la compétence exclusive des tribunaux de l'arrondissement judiciaire de Neufchâteau (Belgique).</p>
+  </section>
+
+</div>
+
+<footer>
+  <p><strong>JL Versage</strong> – Site de versage de terres agréé à Transinne, Wallonie</p>
+  <p style="margin-top:0.5rem;">
+    <a href="tel:+3261230340">061 23 03 40</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:jlversage@jerouville.be">jlversage@jerouville.be</a>
+    &nbsp;·&nbsp;
+    <a href="index.html">Accueil</a>
+    &nbsp;·&nbsp;
+    © 2026 JL Versage. Tous droits réservés.
+  </p>
+</footer>
+
+</body>
+</html>

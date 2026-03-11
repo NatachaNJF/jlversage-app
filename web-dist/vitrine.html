@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JL Versage – Gestion des terres de déblais</title>
+  <meta name="description" content="JL Versage gère le versage de terres de déblais sur le site de Transinne. Demandez votre offre de prix en ligne." />
+  <style>
+    :root {
+      --vert: #2d6a2d;
+      --vert-clair: #4a8c3f;
+      --vert-pale: #e8f5e9;
+      --gris: #f5f5f5;
+      --texte: #1a1a1a;
+      --texte-clair: #555;
+      --border: #ddd;
+      --blanc: #fff;
+      --rouge: #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; color: var(--texte); background: var(--blanc); }
+
+    /* NAV */
+    nav {
+      background: var(--vert);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      text-decoration: none;
+    }
+    .nav-logo img { width: 44px; height: 44px; border-radius: 10px; }
+    .nav-logo-text { color: #fff; }
+    .nav-logo-text strong { display: block; font-size: 1.1rem; font-weight: 700; }
+    .nav-logo-text span { font-size: 0.75rem; opacity: 0.85; }
+    .nav-links { display: flex; gap: 0.25rem; }
+    .nav-links a {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .nav-links a:hover { background: rgba(255,255,255,0.15); }
+    .nav-cta {
+      background: #fff !important;
+      color: var(--vert) !important;
+      font-weight: 600 !important;
+    }
+    .nav-cta:hover { background: var(--vert-pale) !important; }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, var(--vert) 0%, var(--vert-clair) 100%);
+      color: #fff;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      padding: 0.3rem 1rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.15; margin-bottom: 1.25rem; }
+    .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto 2rem; line-height: 1.6; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: #fff;
+      color: var(--vert);
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+    .btn-outline {
+      border: 2px solid rgba(255,255,255,0.7);
+      color: #fff;
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    .btn-outline:hover { background: rgba(255,255,255,0.15); }
+
+    /* STATS BAND */
+    .stats-band {
+      background: var(--vert-pale);
+      border-top: 3px solid var(--vert);
+      border-bottom: 3px solid var(--vert);
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--vert); }
+    .stat-label { font-size: 0.85rem; color: var(--texte-clair); margin-top: 0.25rem; }
+
+    /* SECTIONS */
+    section { padding: 4rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-tag { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--vert-clair); font-weight: 600; margin-bottom: 0.5rem; }
+    h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; margin-bottom: 1rem; }
+    .subtitle { font-size: 1.05rem; color: var(--texte-clair); max-width: 600px; line-height: 1.6; margin-bottom: 2.5rem; }
+
+    /* SERVICES */
+    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .service-card {
+      background: var(--blanc);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .service-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-3px); }
+    .service-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .service-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--vert); }
+    .service-card p { font-size: 0.9rem; color: var(--texte-clair); line-height: 1.6; }
+
+    /* PROCESSUS */
+    .process-bg { background: var(--gris); }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+    .step { text-align: center; padding: 1.5rem; }
+    .step-num {
+      width: 52px; height: 52px;
+      background: var(--vert);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 800;
+      margin: 0 auto 1rem;
+    }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .step p { font-size: 0.85rem; color: var(--texte-clair); line-height: 1.5; }
+
+    /* CLASSES */
+    .classes-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    .classes-table th { background: var(--vert); color: #fff; padding: 0.75rem 1rem; text-align: left; font-size: 0.9rem; }
+    .classes-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .classes-table tr:nth-child(even) td { background: var(--gris); }
+    .classe-badge {
+      display: inline-block;
+      background: var(--vert);
+      color: #fff;
+      border-radius: 4px;
+      padding: 0.2rem 0.6rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    /* FORMULAIRE */
+    .form-bg { background: var(--vert); color: #fff; }
+    .form-bg h2 { color: #fff; }
+    .form-bg .subtitle { color: rgba(255,255,255,0.85); }
+    .form-container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+      color: var(--texte);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .form-full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group label { font-size: 0.85rem; font-weight: 600; color: var(--texte-clair); }
+    .form-group input, .form-group select, .form-group textarea {
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      background: #fff;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--vert-clair);
+      box-shadow: 0 0 0 3px rgba(74,140,63,0.15);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--vert);
+      font-weight: 700;
+      margin-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--vert-pale);
+      grid-column: 1 / -1;
+    }
+    .form-submit {
+      grid-column: 1 / -1;
+      background: var(--vert);
+      color: #fff;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 0.5rem;
+    }
+    .form-submit:hover { background: var(--vert-clair); transform: translateY(-1px); }
+    .form-submit:disabled { background: #aaa; cursor: not-allowed; transform: none; }
+    .form-message {
+      grid-column: 1 / -1;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .form-message.success { background: #e8f5e9; color: #2d6a2d; border: 1px solid #4a8c3f; display: block; }
+    .form-message.error { background: #fdecea; color: var(--rouge); border: 1px solid var(--rouge); display: block; }
+
+    /* CONTACT */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    .contact-info h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: var(--vert); }
+    .contact-item { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: flex-start; }
+    .contact-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .contact-item p { font-size: 0.95rem; color: var(--texte-clair); line-height: 1.5; }
+    .contact-item a { color: var(--vert); text-decoration: none; }
+    .contact-item a:hover { text-decoration: underline; }
+    .map-placeholder {
+      background: var(--vert-pale);
+      border: 2px solid var(--vert);
+      border-radius: 12px;
+      height: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      color: var(--vert);
+      font-size: 0.95rem;
+    }
+    .map-placeholder .map-icon { font-size: 3rem; }
+
+    /* TÉMOIGNAGES */
+    .temoignages-bg { background: var(--gris); }
+    .temoignages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.75rem; margin-top: 2rem; }
+    .temoignage-card {
+      background: var(--blanc);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .temoignage-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.12); transform: translateY(-3px); }
+    .temoignage-stars { color: #f59e0b; font-size: 1.1rem; letter-spacing: 0.1em; }
+    .temoignage-quote {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--texte);
+      font-style: italic;
+      position: relative;
+      padding-left: 1.25rem;
+      border-left: 3px solid var(--vert-clair);
+    }
+    .temoignage-auteur { display: flex; align-items: center; gap: 1rem; }
+    .temoignage-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--vert-pale);
+      background: var(--vert-pale);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .temoignage-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .temoignage-nom { font-weight: 700; font-size: 0.95rem; color: var(--texte); }
+    .temoignage-societe { font-size: 0.82rem; color: var(--texte-clair); }
+    .temoignage-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--vert-pale);
+      color: var(--vert);
+      border-radius: 20px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      align-self: flex-start;
+    }
+
+    /* FOOTER */
+    footer {
+      background: #1a1a1a;
+      color: rgba(255,255,255,0.7);
+      padding: 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+    footer strong { color: #fff; }
+    footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
+    footer a:hover { color: #fff; }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .stats-band { gap: 2rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .form-full { grid-column: 1; }
+      .form-section-title { grid-column: 1; }
+      .form-submit { grid-column: 1; }
+      .form-message { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <img src="https://pub-b4b8e6f7f1e14d7a9f5c8e2a3d6c9b0a.r2.dev/jlversage-logo.png" 
+         onerror="this.style.display='none'" alt="JL Versage" />
+    <div class="nav-logo-text">
+      <strong>JL Versage</strong>
+      <span>Site de Transinne</span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="#services">Services</a>
+    <a href="#processus">Processus</a>
+    <a href="#classes">Classes de terres</a>
+    <a href="#contact">Contact</a>
+    <a href="#offre" class="nav-cta">Demander une offre</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Site agréé – Transinne, Wallonie</div>
+  <h1>Gestion professionnelle<br>de vos terres de déblais</h1>
+  <p>JL Versage prend en charge le versage de vos terres excavées sur notre site agréé à Transinne. Traçabilité complète, conformité Walterre, offre personnalisée.</p>
+  <div class="hero-btns">
+    <a href="#offre" class="btn-primary">Demander une offre de prix</a>
+    <a href="#processus" class="btn-outline">Comment ça fonctionne ?</a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-band">
+  <div class="stat">
+    <div class="stat-num">2</div>
+    <div class="stat-label">Classes de terres acceptées</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Conformité Walterre</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">24h</div>
+    <div class="stat-label">Délai de réponse</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">Transinne</div>
+    <div class="stat-label">Site agréé en Wallonie</div>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="container">
+    <div class="section-tag">Ce que nous proposons</div>
+    <h2>Nos services</h2>
+    <p class="subtitle">Une solution complète pour la gestion de vos terres de déblais, de l'offre de prix à la réception sur site.</p>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon">🏗️</div>
+        <h3>Réception des terres</h3>
+        <p>Accueil et contrôle des camions sur site. Vérification de la conformité des terres avec le bon de transport Walterre.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">📋</div>
+        <h3>Traçabilité complète</h3>
+        <p>Enregistrement de chaque passage : plaque, transporteur, tonnage, heure. Rapport disponible à tout moment.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">✅</div>
+        <h3>Conformité Walterre</h3>
+        <p>Vérification systématique des bons de transport Walterre. Site agréé pour la réception de terres de classes 1 et 2 uniquement.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">💰</div>
+        <h3>Offre personnalisée</h3>
+        <p>Tarification au tonnage selon la classe de terre et le volume estimé. Offre de prix transmise sous 24 heures.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">📍</div>
+        <h3>Site agréé à Transinne</h3>
+        <p>Site de versage agréé par les autorités wallonnes, situé à Transinne. Accès facilité pour les camions.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">📊</div>
+        <h3>Suivi des volumes</h3>
+        <p>Suivi en temps réel des tonnages acceptés. Notification automatique à l'approche du volume déclaré.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESSUS -->
+<section id="processus" class="process-bg">
+  <div class="container">
+    <div class="section-tag">Comment ça fonctionne</div>
+    <h2>Notre processus en 5 étapes</h2>
+    <p class="subtitle">De la demande d'offre à la réception des terres, un processus clair et transparent.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Demande d'offre</h3>
+        <p>Remplissez le formulaire en ligne avec les informations de votre chantier.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Analyse & offre</h3>
+        <p>Nous analysons votre demande et vous envoyons une offre de prix personnalisée sous 24h.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Accord & documents</h3>
+        <p>Après votre accord, vous recevez le numéro de référence Walterre pour vos camions.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Réception sur site</h3>
+        <p>Vos camions sont accueillis et contrôlés sur site. Chaque passage est enregistré.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <h3>Facturation</h3>
+        <p>Facturation au tonnage réel accepté, avec rapport de suivi complet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLASSES -->
+<section id="classes">
+  <div class="container">
+    <div class="section-tag">Terres acceptées</div>
+    <h2>Classes de terres</h2>
+    <p class="subtitle">Nous acceptons uniquement les terres de déblais de <strong>classes 1 et 2</strong> selon la réglementation Walterre. Les terres de classes 3, 4 et 5 ne sont pas acceptées sur notre site.</p>
+    <table class="classes-table">
+      <thead>
+        <tr>
+          <th>Classe</th>
+          <th>Description</th>
+          <th>Utilisation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="classe-badge">1</span></td>
+          <td>Terres non polluées – qualité naturelle</td>
+          <td>Remblayage sans restriction</td>
+        </tr>
+        <tr>
+          <td><span class="classe-badge">2</span></td>
+          <td>Terres faiblement polluées</td>
+          <td>Remblayage avec conditions</td>
+        </tr>
+        <tr style="opacity:0.45;">
+          <td><span class="classe-badge" style="background:#999;">3</span></td>
+          <td>Terres moyennement polluées</td>
+          <td style="color:#c0392b;">❌ Non accepté</td>
+        </tr>
+        <tr style="opacity:0.45;">
+          <td><span class="classe-badge" style="background:#999;">4</span></td>
+          <td>Terres polluées</td>
+          <td style="color:#c0392b;">❌ Non accepté</td>
+        </tr>
+        <tr style="opacity:0.45;">
+          <td><span class="classe-badge" style="background:#999;">5</span></td>
+          <td>Terres fortement polluées</td>
+          <td style="color:#c0392b;">❌ Non accepté</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FORMULAIRE D'OFFRE -->
+<section id="offre" class="form-bg">
+  <div class="container">
+    <div style="text-align:center; margin-bottom: 2rem;">
+      <div class="section-tag" style="color:rgba(255,255,255,0.7)">Demande en ligne</div>
+      <h2>Demandez votre offre de prix</h2>
+      <p class="subtitle" style="margin: 0 auto;">Complétez le formulaire ci-dessous. Nous vous répondons dans les 24 heures ouvrables.</p>
+    </div>
+    <div class="form-container">
+      <form id="offreForm">
+        <div class="form-grid">
+          <!-- Société -->
+          <div class="form-section-title">Informations société</div>
+          <div class="form-group">
+            <label for="societeNom">Nom de la société *</label>
+            <input type="text" id="societeNom" name="societeNom" required placeholder="SA Dupont Construction" />
+          </div>
+          <div class="form-group">
+            <label for="societeTva">Numéro de TVA</label>
+            <input type="text" id="societeTva" name="societeTva" placeholder="BE0123456789" />
+          </div>
+          <div class="form-group form-full">
+            <label for="societeAdresse">Adresse complète *</label>
+            <input type="text" id="societeAdresse" name="societeAdresse" required placeholder="Rue de la Paix 1, 1000 Bruxelles" />
+          </div>
+          <div class="form-group">
+            <label for="societeContact">Nom du contact *</label>
+            <input type="text" id="societeContact" name="societeContact" required placeholder="Jean Dupont" />
+          </div>
+          <div class="form-group">
+            <label for="societeTelephone">Téléphone *</label>
+            <input type="tel" id="societeTelephone" name="societeTelephone" required placeholder="+32 2 123 45 67" />
+          </div>
+          <div class="form-group form-full">
+            <label for="societeMail">Email *</label>
+            <input type="email" id="societeMail" name="societeMail" required placeholder="contact@societe.be" />
+          </div>
+
+          <!-- Chantier -->
+          <div class="form-section-title">Informations chantier</div>
+          <div class="form-group form-full">
+            <label for="localisationChantier">Localisation du chantier *</label>
+            <input type="text" id="localisationChantier" name="localisationChantier" required placeholder="Rue du Chantier 5, 5000 Namur" />
+          </div>
+          <div class="form-group">
+            <label for="volumeEstime">Volume estimé (tonnes) *</label>
+            <input type="number" id="volumeEstime" name="volumeEstime" required min="1" placeholder="500" />
+          </div>
+          <div class="form-group">
+            <label for="classe">Classe de terre *</label>
+            <select id="classe" name="classe" required>
+              <option value="">Sélectionnez une classe</option>
+              <option value="1">Classe 1 – Non polluée</option>
+              <option value="2">Classe 2 – Faiblement polluée</option>
+              <option value="3">Classe 3 – Moyennement polluée</option>
+              <option value="4">Classe 4 – Polluée</option>
+              <option value="5">Classe 5 – Fortement polluée</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="periodeDebut">Début des travaux *</label>
+            <input type="date" id="periodeDebut" name="periodeDebut" required />
+          </div>
+          <div class="form-group">
+            <label for="periodeFin">Fin des travaux *</label>
+            <input type="date" id="periodeFin" name="periodeFin" required />
+          </div>
+          <div class="form-group form-full">
+            <label for="notes">Informations complémentaires</label>
+            <textarea id="notes" name="notes" placeholder="Précisions sur les terres, contraintes d'accès, questions..."></textarea>
+          </div>
+
+          <div id="formMessage" class="form-message"></div>
+          <button type="submit" class="form-submit" id="submitBtn">
+            Envoyer ma demande d'offre
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="container">
+    <div class="section-tag">Nous contacter</div>
+    <h2>Contact & localisation</h2>
+    <p class="subtitle">Notre équipe est disponible pour répondre à vos questions.</p>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <h3>JL Versage</h3>
+        <div class="contact-item">
+          <div class="contact-icon">📍</div>
+          <p>Site de versage<br>Transinne, Wallonie, Belgique</p>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">📞</div>
+          <p><a href="tel:+3261230340">061 23 03 40</a><br><small style="color:#888;">Demandez Jessica</small></p>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">✉️</div>
+          <p><a href="mailto:jlversage@jerouville.be">jlversage@jerouville.be</a></p>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">🕐</div>
+          <p>Lundi – Vendredi : 7h00 – 16h00<br>Dernier dépôt accepté à 15h45<br>Fermé le samedi et les jours fériés</p>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">⚠️</div>
+          <p>Tout camion doit être muni d'un bon de transport Walterre valide pour accéder au site.</p>
+        </div>
+      </div>
+      <div class="map-placeholder">
+        <div class="map-icon">🗺️</div>
+        <strong>Transinne, Wallonie</strong>
+        <p style="font-size:0.85rem; color:#4a8c3f;">Province de Luxembourg, Belgique</p>
+        <a href="https://maps.google.com/?q=Transinne,+6890+Libin,+Belgique" target="_blank" 
+           style="margin-top:0.5rem; background:var(--vert); color:#fff; padding:0.5rem 1.25rem; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">
+          Voir sur Google Maps
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p><strong>JL Versage</strong> – Site de versage de terres agréé à Transinne, Wallonie</p>
+  <p style="margin-top:0.5rem;">
+    <a href="tel:+3261230340">061 23 03 40</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:jlversage@jerouville.be">jlversage@jerouville.be</a>
+    &nbsp;·&nbsp;
+    <a href="#offre">Demander une offre</a>
+    &nbsp;·&nbsp;
+    <a href="mentions-legales.html">Mentions légales</a>
+    &nbsp;·&nbsp;
+    © 2026 JL Versage. Tous droits réservés.
+  </p>
+</footer>
+
+<script>
+  const API_BASE = 'https://backend-production-1c955.up.railway.app';
+
+  document.getElementById('offreForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('formMessage');
+    
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours...';
+    msg.className = 'form-message';
+    msg.style.display = 'none';
+
+    const data = {
+      societeNom: document.getElementById('societeNom').value.trim(),
+      societeAdresse: document.getElementById('societeAdresse').value.trim(),
+      societeTva: document.getElementById('societeTva').value.trim() || undefined,
+      societeMail: document.getElementById('societeMail').value.trim(),
+      societeContact: document.getElementById('societeContact').value.trim(),
+      societeTelephone: document.getElementById('societeTelephone').value.trim(),
+      localisationChantier: document.getElementById('localisationChantier').value.trim(),
+      volumeEstime: parseFloat(document.getElementById('volumeEstime').value),
+      classe: parseInt(document.getElementById('classe').value),
+      periodeDebut: document.getElementById('periodeDebut').value,
+      periodeFin: document.getElementById('periodeFin').value,
+      notes: document.getElementById('notes').value.trim() || undefined,
+    };
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/trpc/demandePublique.soumettre`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: data }),
+      });
+
+      const result = await resp.json();
+
+      if (resp.ok && result?.result?.data?.json?.success) {
+        msg.className = 'form-message success';
+        msg.textContent = '✅ Votre demande a bien été enregistrée ! Nous vous contacterons dans les 24 heures ouvrables.';
+        msg.style.display = 'block';
+        document.getElementById('offreForm').reset();
+      } else {
+        const errMsg = result?.error?.json?.message || 'Une erreur est survenue. Veuillez réessayer.';
+        msg.className = 'form-message error';
+        msg.textContent = '❌ ' + errMsg;
+        msg.style.display = 'block';
+      }
+    } catch (err) {
+      msg.className = 'form-message error';
+      msg.textContent = '❌ Impossible de contacter le serveur. Veuillez réessayer ou nous contacter par email.';
+      msg.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Envoyer ma demande d\'offre';
+    msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // Smooth scroll pour les ancres
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', function(e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
