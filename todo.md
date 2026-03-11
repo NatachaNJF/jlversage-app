@@ -204,10 +204,10 @@
 - [x] Simplifier validation_admin : bouton "Autoriser" direct (sans les 2 étapes)
 
 ## Site vitrine v20 — Corrections
-- [ ] Corriger horaires : Lun-Ven 7h-16h, fermé le samedi
-- [ ] Corriger email : jlversage@jerouville.be
-- [ ] Corriger classes : seules classes 1 et 2 acceptées (chiffre clé "2 classes" et tableau)
-- [ ] Supprimer la section témoignages
-- [ ] Ajouter lien Google Maps (placeholder en attendant l'adresse exacte)
-- [ ] Ajouter numéro de téléphone 061 23 03 40 (demandez Jessica)
-- [ ] Ajouter page mentions légales (Jérouville, BE413825754, Quartier Haynol 1, 6800 Libramont-Chevigny)
+- [x] Corriger horaires : Lun-Ven 7h-16h, fermé le samedi
+- [x] Corriger email : jlversage@jerouville.be
+- [x] Corriger classes : seules classes 1 et 2 acceptées (chiffre clé "2 classes" et tableau)
+- [x] Supprimer la section témoignages
+- [x] Ajouter lien Google Maps (placeholder en attendant l'adresse exacte)
+- [x] Ajouter numéro de téléphone 061 23 03 40 (demandez Jessica)
+- [x] Ajouter page mentions légales (Jérouville, BE413825754, Quartier Haynol 1, 6800 Libramont-Chevigny)
