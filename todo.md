@@ -197,3 +197,8 @@
 - [x] Ajouter gestion des congés/fermetures dans le planning de versages (tableau des jours bloqués)
 - [ ] Afficher les jours fermés dans l'écran d'analyse étape 1 (capacité)
 - [ ] Bloquer les passages ce jour-là dans l'app préposé si le site est fermé
+
+## Workflow v19 — Correction déclenchement analyse
+- [x] Déplacer l'écran analyse 2 étapes du statut validation_admin vers le statut analyse
+- [x] Supprimer l'ancienne modal d'offre directe au statut analyse
+- [x] Simplifier validation_admin : bouton "Autoriser" direct (sans les 2 étapes)

@@ -235,7 +235,7 @@ export default function ChantierDetailScreen() {
             ) : null}
 
             {c.statut === 'analyse' ? (
-              <ActionBtn label="Envoyer l'offre de prix" color="#3B82F6" onPress={() => setShowOffreModal(true)} loading={envoyerOffreMutation.isPending} />
+              <ActionBtn label="Analyser le dossier" color="#F59E0B" onPress={() => router.push((`/chantier/prevalidation/${id}`) as any)} loading={false} />
             ) : null}
 
             {c.statut === 'offre_envoyee' ? (
@@ -250,7 +250,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'validation_admin' ? (
               <>
-                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={() => router.push((`/chantier/prevalidation/${id}`) as any)} loading={false} />
+                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={() => showConfirm('Autoriser le chantier', 'Autoriser définitivement ce chantier ? Un email sera envoyé au client.', () => autoriserMutation.mutate({ id: Number(id) }), 'Autoriser')} loading={autoriserMutation.isPending} />
                 <ActionBtn label="❌ Refuser le dossier" color="#EF4444" onPress={() => setShowRefusModal(true)} loading={refuserMutation.isPending} />
               </>
             ) : null}
