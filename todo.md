@@ -214,3 +214,8 @@
 
 ## Site vitrine v21 — Google Maps
 - [x] Mettre à jour le lien Google Maps avec l'adresse exacte du site de versage
+
+## DNS v22 — Configuration jlversage.be
+- [ ] Configurer Railway pour accepter jlversage.be et www.jlversage.be (site vitrine)
+- [ ] Configurer Railway pour accepter app.jlversage.be (application de gestion)
+- [ ] Ajouter redirection / vers /vitrine.html sur Railway

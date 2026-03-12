@@ -168,6 +168,21 @@ async function startServer() {
   if (fs.existsSync(webDistPath)) {
     console.log(`[web] Serving static files from ${webDistPath}`);
     app.use(express.static(webDistPath));
+    // Redirection racine vers le site vitrine si accès via jlversage.be
+    app.get("/", (req, res) => {
+      const host = req.headers.host || "";
+      if (host.includes("jlversage.be")) {
+        const vitrinePath = path.join(webDistPath, "vitrine.html");
+        if (fs.existsSync(vitrinePath)) {
+          return res.sendFile(vitrinePath);
+        }
+      }
+      const indexPath = path.join(webDistPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+      res.status(404).send("Not found");
+    });
     // SPA fallback: serve index.html for all non-API routes
     app.get("*", (_req, res) => {
       const indexPath = path.join(webDistPath, "index.html");
