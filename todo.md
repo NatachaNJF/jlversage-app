@@ -230,3 +230,9 @@
 - [x] Corriger l'adresse email jlversage@erouville.be → jlversage@jerouville.be dans email.ts (tous les templates)
 - [x] Corriger l'adresse email dans l'écran de login (app/login.tsx)
 - [x] Vérifier que vitrine.html et mentions-legales.html sont bien dans web-dist
+
+## Fix v25 — URL API production pour app native
+- [x] Identifier que l'ancienne URL backend-production-1c955 était codée dans le .env et utilisée au build
+- [x] Coder l'URL de production versageterr-kkmfyarn.manus.space en dur dans constants/oauth.ts (fallback natif)
+- [x] Ajouter détection manus.space dans getApiBaseUrl pour retourner URL relative (même origine web)
+- [x] Rebuild web-dist avec la nouvelle URL
