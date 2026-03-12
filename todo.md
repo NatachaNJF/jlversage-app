@@ -238,9 +238,9 @@
 - [x] Rebuild web-dist avec la nouvelle URL
 
 ## Fix v26 — Refonte page analyse + suppression offre automatique
-- [ ] Ajouter colonnes offreOdoo et dateOffreOdoo dans le schéma DB
-- [ ] Ajouter migration SQL pour les nouvelles colonnes
-- [ ] Ajouter route tRPC terminerAnalyse (remplace envoyerOffre)
-- [ ] Refaire page prevalidation/[id].tsx : 2 phases (capacité + finances/offre Odoo)
-- [ ] Supprimer page offre/[id].tsx
-- [ ] Nettoyer les références à envoyerOffre et offre_envoyee dans le code
+- [x] Ajouter colonnes offreOdoo et dateOffreOdoo dans le schéma DB
+- [x] Ajouter migration SQL pour les nouvelles colonnes
+- [x] Ajouter route tRPC terminerAnalyse (remplace envoyerOffre)
+- [x] Refaire page prevalidation/[id].tsx : 2 phases (capacité + finances/offre Odoo)
+- [x] Supprimer modal offre dans chantier/[id].tsx
+- [x] Nettoyer les références à envoyerOffre dans le détail chantier
