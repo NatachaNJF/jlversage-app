@@ -1,9 +1,8 @@
 /**
- * Helper d'envoi d'emails via l'API LLM/Forge intégrée.
- * Utilise notifyOwner pour les alertes internes.
- * Pour les emails clients, utilise fetch vers un service SMTP ou l'API intégrée.
+ * Helper d'envoi d'emails via SMTP (nodemailer).
+ * Utilise jessica.henrion@jerouville.be comme compte d'envoi.
  */
-import { notifyOwner } from "./_core/notification";
+import nodemailer from "nodemailer";
 
 export interface EmailOptions {
   to: string;
@@ -12,41 +11,48 @@ export interface EmailOptions {
   text?: string;
 }
 
+// Transporteur SMTP — configuré via variables d'environnement
+function createTransporter() {
+  const host = process.env.SMTP_HOST || "smtp.office365.com";
+  const port = parseInt(process.env.SMTP_PORT || "587");
+  const user = process.env.SMTP_USER || "jessica.henrion@jerouville.be";
+  const pass = process.env.SMTP_PASS || "";
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false, ciphers: 'SSLv3' },
+  });
+}
+
 /**
- * Envoie un email via l'API Forge intégrée (si disponible) ou log en dev.
+ * Envoie un email via SMTP nodemailer.
  */
 export async function sendEmail(opts: EmailOptions): Promise<boolean> {
-  const apiUrl = process.env.BUILT_IN_FORGE_API_URL;
-  const apiKey = process.env.BUILT_IN_FORGE_API_KEY;
+  const smtpPass = process.env.SMTP_PASS;
 
-  if (!apiUrl || !apiKey) {
+  if (!smtpPass) {
     console.log(`[Email DEV] To: ${opts.to} | Subject: ${opts.subject}`);
-    console.log(`[Email DEV] Body: ${opts.text || opts.html}`);
+    console.log(`[Email DEV] Body: ${opts.text || opts.html.substring(0, 200)}`);
     return true;
   }
 
   try {
-    const url = `${apiUrl.replace(/\/+$/, "")}/v1/email/send`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text,
-      }),
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"JL Versage" <jlversage@jerouville.be>';
+    await transporter.sendMail({
+      from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
     });
-    if (!res.ok) {
-      console.warn(`[Email] Send failed: ${res.status} ${res.statusText}`);
-      return false;
-    }
+    console.log(`[Email] Envoyé à ${opts.to} — ${opts.subject}`);
     return true;
   } catch (err) {
-    console.error("[Email] Error:", err);
+    console.error("[Email] Erreur d'envoi:", err);
     return false;
   }
 }

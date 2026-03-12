@@ -219,3 +219,7 @@
 - [ ] Configurer Railway pour accepter jlversage.be et www.jlversage.be (site vitrine)
 - [ ] Configurer Railway pour accepter app.jlversage.be (application de gestion)
 - [ ] Ajouter redirection / vers /vitrine.html sur Railway
+
+## Mail v23 — Configuration SMTP
+- [x] Configurer SMTP avec jessica.henrion@jerouville.be (alias jlversage@jerouville.be)
+- [x] Tester l'envoi d'email depuis l'application
