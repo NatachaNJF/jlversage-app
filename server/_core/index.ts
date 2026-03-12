@@ -166,6 +166,18 @@ async function startServer() {
   // Use process.cwd() instead of __dirname because esbuild changes __dirname after compilation
   const webDistPath = path.resolve(process.cwd(), "web-dist");
   const fs = await import("fs");
+  
+  // Diagnostic endpoint
+  app.get("/api/diagnostic", (_req, res) => {
+    res.json({
+      cwd: process.cwd(),
+      webDistPath,
+      webDistExists: fs.existsSync(webDistPath),
+      indexExists: fs.existsSync(path.join(webDistPath, "index.html")),
+      env: process.env.NODE_ENV,
+    });
+  });
+  
   if (fs.existsSync(webDistPath)) {
     console.log(`[web] Serving static files from ${webDistPath}`);
     app.use(express.static(webDistPath));
