@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, email, loginMethod, appRole, passwordHash IS NOT NULL as hasHash, mustChangePassword FROM users ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute SELECT id, email, loginMethod, appRole, passwordHash IS NOT NULL as hasHash, mustChangePassword FROM users ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "email": "natacha.jerouville@jerouville.be",
+      "loginMethod": "email",
+      "appRole": "gestionnaire",
+      "hasHash": "1",
+      "mustChangePassword": "0"
+    },
+    {
+      "id": "90017",
+      "email": "gaelle.frauenkron@jerouville.be",
+      "loginMethod": "manual",
+      "appRole": "gestionnaire",
+      "hasHash": "0",
+      "mustChangePassword": "0"
+    },
+    {
+      "id": "90020",
+      "email": "natacha.jerouville@gmail.com",
+      "loginMethod": "manual",
+      "appRole": "prepose",
+      "hasHash": "0",
+      "mustChangePassword": "0"
+    },
+    {
+      "id": "210001",
+      "email": "jessica.henrion@jerouville.be",
+      "loginMethod": "microsoft",
+      "appRole": "prepose",
+      "hasHash": "0",
+      "mustChangePassword": "0"
+    },
+    {
+      "id": "450001",
+      "email": "admin@jlversage.be",
+      "loginMethod": "local",
+      "appRole": "gestionnaire",
+      "hasHash": "1",
+      "mustChangePassword": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tloginMethod\tappRole\thasHash\tmustChangePassword\n1\tnatacha.jerouville@jerouville.be\temail\tgestionnaire\t1\t0\n90017\tgaelle.frauenkron@jerouville.be\tmanual\tgestionnaire\t0\t0\n90020\tnatacha.jerouville@gmail.com\tmanual\tprepose\t0\t0\n210001\tjessica.henrion@jerouville.be\tmicrosoft\tprepose\t0\t0\n450001\tadmin@jlversage.be\tlocal\tgestionnaire\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 287
+}

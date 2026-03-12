@@ -163,7 +163,8 @@ async function startServer() {
   );
 
   // Serve Expo web static files in production
-  const webDistPath = path.resolve(__dirname, "..", "web-dist");
+  // Use process.cwd() instead of __dirname because esbuild changes __dirname after compilation
+  const webDistPath = path.resolve(process.cwd(), "web-dist");
   const fs = await import("fs");
   if (fs.existsSync(webDistPath)) {
     console.log(`[web] Serving static files from ${webDistPath}`);

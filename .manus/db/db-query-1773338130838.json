@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, email, loginMethod, appRole, CASE WHEN passwordHash IS NOT NULL THEN 'oui' ELSE 'non' END as hasHash FROM users ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute SELECT id, email, loginMethod, appRole, CASE WHEN passwordHash IS NOT NULL THEN 'oui' ELSE 'non' END as hasHash FROM users ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "email": "natacha.jerouville@jerouville.be",
+      "loginMethod": "email",
+      "appRole": "gestionnaire",
+      "hasHash": "oui"
+    },
+    {
+      "id": "90017",
+      "email": "gaelle.frauenkron@jerouville.be",
+      "loginMethod": "manual",
+      "appRole": "gestionnaire",
+      "hasHash": "non"
+    },
+    {
+      "id": "90020",
+      "email": "natacha.jerouville@gmail.com",
+      "loginMethod": "manual",
+      "appRole": "prepose",
+      "hasHash": "non"
+    },
+    {
+      "id": "210001",
+      "email": "jessica.henrion@jerouville.be",
+      "loginMethod": "microsoft",
+      "appRole": "prepose",
+      "hasHash": "non"
+    },
+    {
+      "id": "450001",
+      "email": "admin@jlversage.be",
+      "loginMethod": "local",
+      "appRole": "gestionnaire",
+      "hasHash": "oui"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tloginMethod\tappRole\thasHash\n1\tnatacha.jerouville@jerouville.be\temail\tgestionnaire\toui\n90017\tgaelle.frauenkron@jerouville.be\tmanual\tgestionnaire\tnon\n90020\tnatacha.jerouville@gmail.com\tmanual\tprepose\tnon\n210001\tjessica.henrion@jerouville.be\tmicrosoft\tprepose\tnon\n450001\tadmin@jlversage.be\tlocal\tgestionnaire\toui\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}
