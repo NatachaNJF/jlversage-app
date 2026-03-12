@@ -223,3 +223,10 @@
 ## Mail v23 — Configuration SMTP
 - [x] Configurer SMTP avec jessica.henrion@jerouville.be (alias jlversage@jerouville.be)
 - [x] Tester l'envoi d'email depuis l'application
+
+## Fix v24 — Rebuild web-dist et corrections
+- [x] Identifier que web-dist était obsolète (ne contenait pas prevalidation, fermetures, passage/[id])
+- [x] Reconstruire le web-dist complet avec toutes les fonctionnalités récentes
+- [x] Corriger l'adresse email jlversage@erouville.be → jlversage@jerouville.be dans email.ts (tous les templates)
+- [x] Corriger l'adresse email dans l'écran de login (app/login.tsx)
+- [x] Vérifier que vitrine.html et mentions-legales.html sont bien dans web-dist
