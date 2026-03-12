@@ -46,9 +46,9 @@ export function getApiBaseUrl(): string {
       return `${protocol}//${apiHostname}`;
     }
 
-    // Production Railway: API and web are on the same domain/port
+    // Production Railway / Manus: API and web are on the same domain/port
     // Use relative URL (empty string) so tRPC calls go to the same origin
-    if (hostname.includes("railway.app") || hostname.includes("up.railway.app")) {
+    if (hostname.includes("railway.app") || hostname.includes("up.railway.app") || hostname.includes("manus.space") || hostname.includes("manus.computer")) {
       return "";
     }
 
@@ -56,8 +56,8 @@ export function getApiBaseUrl(): string {
     return `${protocol}//${hostname}${port ? ":" + port : ""}`;
   }
 
-  // Fallback to empty (will use relative URL)
-  return "";
+  // Fallback for native apps: use production URL
+  return "https://versageterr-kkmfyarn.manus.space";
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
