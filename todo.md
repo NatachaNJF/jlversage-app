@@ -211,3 +211,6 @@
 - [x] Ajouter lien Google Maps (placeholder en attendant l'adresse exacte)
 - [x] Ajouter numéro de téléphone 061 23 03 40 (demandez Jessica)
 - [x] Ajouter page mentions légales (Jérouville, BE413825754, Quartier Haynol 1, 6800 Libramont-Chevigny)
+
+## Site vitrine v21 — Google Maps
+- [x] Mettre à jour le lien Google Maps avec l'adresse exacte du site de versage
