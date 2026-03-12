@@ -257,9 +257,9 @@ export default function LoginScreen() {
           <Text style={[styles.infoText, { color: colors.muted }]}>
             Première connexion ? Contactez l'administrateur :{' '}
           </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('mailto:jlversage@erouville.be')}>
+          <TouchableOpacity onPress={() => Linking.openURL('mailto:jlversage@jerouville.be')}>
             <Text style={[styles.infoText, { color: colors.primary, textDecorationLine: 'underline' }]}>
-              jlversage@erouville.be
+              jlversage@jerouville.be
             </Text>
           </TouchableOpacity>
         </View>

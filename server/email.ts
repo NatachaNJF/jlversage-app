@@ -99,7 +99,7 @@ export function emailRefusClasse(societeNom: string, societeEmail: string, class
       <p>Malheureusement, nous ne pouvons pas donner suite à votre demande car la classe de terre déclarée (<strong>Classe ${classe}</strong>) est incompatible avec les conditions d'acceptation de notre site verseur.</p>
       <p>Notre site accepte uniquement les terres de <strong>classe 1 et 2</strong> conformément à la réglementation Walterre.</p>
       <p>Si votre chantier concerne des terres de classe 1 ou 2, n'hésitez pas à nous recontacter afin que nous puissions traiter votre demande.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Bonjour,\n\nNous ne pouvons pas donner suite à votre demande. La classe ${classe} est incompatible avec notre site (classes 1 et 2 uniquement).\n\nSi votre chantier concerne des terres de classe 1 ou 2, n'hésitez pas à nous recontacter.\n\nCordialement,\nJL Versage`,
   };
@@ -122,7 +122,7 @@ export function emailRefusCapacite(
       <p>Malheureusement, nous ne pouvons pas donner suite à votre demande car notre planning de versage est complet sur la période demandée (<strong>${periodeDebut} – ${periodeFin}</strong>).</p>
       ${commentaire ? `<p><strong>Précision :</strong> ${commentaire}</p>` : ''}
       <p>N'hésitez pas à nous recontacter si d'autres dates sont possibles pour vous, nous ferons notre possible pour trouver un créneau disponible.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Bonjour,\n\nNotre planning de versage est complet sur la période ${periodeDebut} – ${periodeFin}.\n${commentaire ? `\n${commentaire}\n` : ''}\nN'hésitez pas à nous recontacter si d'autres dates sont possibles pour vous.\n\nCordialement,\nJL Versage`,
   };
@@ -150,7 +150,7 @@ export function emailOffrePrix(
       </table>
       ${BLOC_CONDITIONS_HTML}
       <p>Pour confirmer cette offre, veuillez répondre à cet email ou contacter notre équipe.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Offre de prix JL Versage\n\nPrix : 9,00 €/T\nRéduction : 8,50 €/T > 10 000 T/an | 8,00 €/T > 20 000 T/an\nPériode : ${periodeDebut} au ${periodeFin}\n${BLOC_CONDITIONS_TEXT}\nCordialement,\nJL Versage`,
   };
@@ -181,7 +181,7 @@ export function emailOffrePrixComptant(
       </p>
       ${BLOC_CONDITIONS_HTML}
       <p>Pour confirmer cette offre, veuillez répondre à cet email ou contacter notre équipe.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Offre de prix JL Versage\n\nPrix : 9,00 €/T\nRéduction : 8,50 €/T > 10 000 T/an | 8,00 €/T > 20 000 T/an\nPériode : ${periodeDebut} au ${periodeFin}\n\nATTENTION : Paiement exigé au comptant AVANT de décharger sur le site.\n${BLOC_CONDITIONS_TEXT}\nCordialement,\nJL Versage`,
   };
@@ -206,7 +206,7 @@ export function emailAutorisation(
       </table>
       ${BLOC_CONDITIONS_HTML}
       <p>Pour toute question, n'hésitez pas à nous contacter.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Chantier autorisé à livrer au site de Transinne.\nRéférence Walterre : ${referenceWalterre}\n${BLOC_CONDITIONS_TEXT}`,
   };
@@ -226,7 +226,7 @@ export function emailRefusValidation(
       <p>Après examen de votre dossier, nous sommes dans l'obligation de refuser votre demande de versage.</p>
       <p><strong>Motif du refus :</strong><br>${motif}</p>
       <p>Pour toute question ou pour soumettre un dossier corrigé, n'hésitez pas à nous contacter.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Dossier refusé.\nMotif : ${motif}\n\nPour toute question, contactez-nous.\n\nCordialement,\nJL Versage`,
   };
@@ -248,7 +248,7 @@ export function emailVolumeAtteint(
       <p>Tonnage total accepté : <strong>${tonnageAccepte.toFixed(2)} T</strong></p>
       <p>À partir de maintenant, aucun nouveau camion ne pourra être accepté pour ce chantier.</p>
       <p>Si vous souhaitez continuer les apports, vous devrez nous soumettre un <strong>nouveau bon de transport Walterre</strong> pour un volume supplémentaire. Contactez-nous pour la marche à suivre.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Volume atteint pour le chantier ${referenceWalterre}. Tonnage accepté : ${tonnageAccepte.toFixed(2)} T.\n\nPour continuer les apports, un nouveau bon de transport Walterre est nécessaire.\n\nCordialement,\nJL Versage`,
   };
@@ -302,7 +302,7 @@ export function emailConditionsAccesTransporteur(
         <strong>Important :</strong> Le non-respect de ces conditions entraîne le refus immédiat du chargement. En cas de doute, contactez-nous avant de vous déplacer.
       </p>
       <p>Pour toute question, n'hésitez pas à nous contacter.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Bonjour ${transporteurNom},\n\nConditions d'accès au site de versage JL Versage (Transinne) :\n- Bon de transport Walterre valide obligatoire\n- Horaires : lun-ven 07h-16h (dernier dépôt à 15h45) — fermé le samedi\n- Classes 1 et 2 uniquement\n- Référence chantier à communiquer à l'arrivée\n- Refus systématique : déchets plastiques, briquaillons, odeur suspecte, couleur anormale, matériaux mélangés, humidité anormale ou boues douteuses\n\nCordialement,\nJL Versage`,
   };
@@ -353,7 +353,7 @@ export function emailNouvelUtilisateurCreation(
         <li>Connectez-vous avec votre compte Manus (email : ${userEmail})</li>
       </ol>
       <p>Votre accès est immédiatement actif.</p>
-      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@erouville.be</p>
+      <p>Cordialement,<br><strong>JL Versage</strong><br>Site de Transinne<br>jlversage@jerouville.be</p>
     `,
     text: `Bonjour ${userName},\n\nUn compte ${roleLabel} vous a été créé sur l'application JL Versage.\n\nConnectez-vous avec votre compte Manus (email : ${userEmail}).`,
   };
