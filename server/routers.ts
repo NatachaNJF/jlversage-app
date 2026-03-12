@@ -252,14 +252,46 @@ export const appRouter = router({
     envoyerOffre: gestionnaireOnly
       .input(z.object({ id: z.number(), prixTonne: z.number().positive(), conditionsAcceptation: z.string().min(1), paiementComptant: z.boolean().optional() }))
       .mutation(async ({ input }) => {
+        // Conservé pour compatibilité — non utilisé depuis la refonte analyse
         const chantier = await db.getChantierById(input.id);
         if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
         await db.updateChantier(input.id, { prixTonne: input.prixTonne.toString(), conditionsAcceptation: input.conditionsAcceptation, statut: "offre_envoyee" });
-        if (input.paiementComptant) {
-          await sendEmail(emailOffrePrixComptant(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
-        } else {
-          await sendEmail(emailOffrePrix(chantier.societeNom, chantier.societeMail, input.prixTonne, input.conditionsAcceptation, chantier.periodeDebut, chantier.periodeFin));
+        return { success: true };
+      }),
+    terminerAnalyse: gestionnaireOnly
+      .input(z.object({
+        id: z.number(),
+        financesOk: z.boolean(),
+        commentaireAnalyse: z.string().optional(),
+        offreOdoo: z.boolean().optional(),
+        dateOffreOdoo: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const chantier = await db.getChantierById(input.id);
+        if (!chantier) throw new TRPCError({ code: "NOT_FOUND" });
+        const updates: Record<string, any> = {
+          financesOk: input.financesOk,
+          commentaireAnalyse: input.commentaireAnalyse ?? null,
+          statut: "offre_envoyee",
+        };
+        if (input.offreOdoo) {
+          updates.offreOdoo = true;
+          updates.dateOffreOdoo = input.dateOffreOdoo ?? new Date().toISOString().split("T")[0];
         }
+        await db.updateChantier(input.id, updates);
+        return { success: true };
+      }),
+    mettreAJourOffreOdoo: gestionnaireOnly
+      .input(z.object({
+        id: z.number(),
+        offreOdoo: z.boolean(),
+        dateOffreOdoo: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateChantier(input.id, {
+          offreOdoo: input.offreOdoo,
+          dateOffreOdoo: input.offreOdoo ? (input.dateOffreOdoo ?? new Date().toISOString().split("T")[0]) : null,
+        });
         return { success: true };
       }),
     confirmerAccordClient: gestionnaireOnly

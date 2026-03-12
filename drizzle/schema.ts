@@ -90,6 +90,12 @@ export const chantiers = pgTable("chantiers", {
   confirmationClient: boolean("confirmationClient").default(false),
   dateConfirmation: varchar("dateConfirmation", { length: 10 }),
 
+  // Analyse — résultats
+  financesOk: boolean("financesOk"),
+  commentaireAnalyse: text("commentaireAnalyse"),
+  offreOdoo: boolean("offreOdoo").default(false),
+  dateOffreOdoo: varchar("dateOffreOdoo", { length: 10 }),
+
   // Documents Walterre
   referenceWalterre: varchar("referenceWalterre", { length: 100 }),
   certificatQualite: boolean("certificatQualite").default(false),

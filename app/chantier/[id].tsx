@@ -57,14 +57,6 @@ export default function ChantierDetailScreen() {
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); },
     onError: (err: any) => showAlert('Erreur', err.message),
   });
-  const envoyerOffreMutation = trpc.chantiers.envoyerOffre.useMutation({
-    onSuccess: () => {
-      utils.chantiers.get.invalidate({ id: Number(id) });
-      showAlert('Succès', "L'offre de prix a été envoyée par email au client.");
-      setShowOffreModal(false); setPrixTonne(''); setConditions('');
-    },
-    onError: (err: any) => showAlert('Erreur', err.message),
-  });
   const autoriserMutation = trpc.chantiers.autoriser.useMutation({
     onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); utils.chantiers.list.invalidate(); setShowAutoriserModal(false); },
     onError: (err: any) => showAlert('Erreur', err.message),
@@ -85,10 +77,11 @@ export default function ChantierDetailScreen() {
     onSuccess: () => { utils.chantiers.list.invalidate(); router.replace('/(tabs)'); },
     onError: (err: any) => showAlert('Erreur', err.message),
   });
+  const mettreAJourOffreMutation = trpc.chantiers.mettreAJourOffreOdoo.useMutation({
+    onSuccess: () => { utils.chantiers.get.invalidate({ id: Number(id) }); },
+    onError: (err: any) => showAlert('Erreur', err.message),
+  });
 
-  const [showOffreModal, setShowOffreModal] = useState(false);
-  const [prixTonne, setPrixTonne] = useState('');
-  const [conditions, setConditions] = useState('');
   const [showRefusModal, setShowRefusModal] = useState(false);
   const [motifRefus, setMotifRefus] = useState('');
   const [showAutoriserModal, setShowAutoriserModal] = useState(false);
@@ -117,15 +110,6 @@ export default function ChantierDetailScreen() {
   const passages = passagesQuery.data ?? [];
   const currentStep = WORKFLOW.findIndex(s => s.key === c.statut);
 
-  function handleSendOffre() {
-    if (!prixTonne.trim() || isNaN(Number(prixTonne)) || Number(prixTonne) <= 0) {
-      showAlert('Erreur', 'Veuillez saisir un prix à la tonne valide.'); return;
-    }
-    if (!conditions.trim()) {
-      showAlert('Erreur', 'Veuillez saisir les conditions d\'acceptation.'); return;
-    }
-    envoyerOffreMutation.mutate({ id: Number(id), prixTonne: Number(prixTonne), conditionsAcceptation: conditions.trim() });
-  }
   function handleRefuser() {
     if (!motifRefus.trim() || motifRefus.trim().length < 10) {
       showAlert('Motif requis', 'Veuillez indiquer le motif du refus (minimum 10 caractères).'); return;
@@ -199,6 +183,60 @@ export default function ChantierDetailScreen() {
           </View>
         ) : null}
 
+        {/* Résultat analyse (visible dès statut offre_envoyee+) */}
+        {['offre_envoyee', 'documents_demandes', 'validation_admin', 'autorise', 'en_cours', 'volume_atteint', 'cloture'].includes(c.statut) && (c as any).financesOk !== null && (c as any).financesOk !== undefined ? (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Résultat analyse</Text>
+            <View style={[styles.analyseRow, {
+              backgroundColor: (c as any).financesOk ? '#10B98115' : '#F59E0B15',
+              borderColor: (c as any).financesOk ? '#10B981' : '#F59E0B',
+            }]}>
+              <Text style={{ fontSize: 16 }}>{(c as any).financesOk ? '✅' : '⚠️'}</Text>
+              <Text style={[styles.analyseText, { color: (c as any).financesOk ? '#10B981' : '#F59E0B' }]}>
+                Finances {(c as any).financesOk ? 'saines' : 'non saines — paiement au comptant'}
+              </Text>
+            </View>
+            {(c as any).commentaireAnalyse ? (
+              <Text style={[styles.analyseComment, { color: colors.muted }]}>{(c as any).commentaireAnalyse}</Text>
+            ) : null}
+
+            {/* Offre Odoo */}
+            <View style={[styles.odooRow, { borderTopColor: colors.border }]}>
+              <View style={styles.odooInfo}>
+                <Text style={[styles.odooLabel, { color: colors.foreground }]}>Offre de prix Odoo</Text>
+                {(c as any).dateOffreOdoo ? (
+                  <Text style={[styles.odooDate, { color: colors.muted }]}>Envoyée le {(c as any).dateOffreOdoo}</Text>
+                ) : null}
+              </View>
+              {isGestionnaire ? (
+                <Pressable
+                  onPress={() => {
+                    const newVal = !(c as any).offreOdoo;
+                    mettreAJourOffreMutation.mutate({
+                      id: Number(id),
+                      offreOdoo: newVal,
+                      dateOffreOdoo: newVal ? new Date().toISOString().split('T')[0] : undefined,
+                    });
+                  }}
+                  style={({ pressed }) => [styles.odooToggle, {
+                    backgroundColor: (c as any).offreOdoo ? '#10B981' : colors.border,
+                    opacity: pressed || mettreAJourOffreMutation.isPending ? 0.7 : 1,
+                  }]}
+                >
+                  {mettreAJourOffreMutation.isPending
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={styles.odooToggleText}>{(c as any).offreOdoo ? '✓ Envoyée' : 'Non envoyée'}</Text>
+                  }
+                </Pressable>
+              ) : (
+                <Text style={[styles.odooToggleText, { color: (c as any).offreOdoo ? '#10B981' : colors.muted }]}>
+                  {(c as any).offreOdoo ? '✓ Envoyée' : 'Non envoyée'}
+                </Text>
+              )}
+            </View>
+          </View>
+        ) : null}
+
         {/* Société */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Société cliente</Text>
@@ -240,7 +278,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'offre_envoyee' ? (
               <ActionBtn label="Confirmer accord client → Documents" color="#8B5CF6" loading={confirmerAccordMutation.isPending}
-                onPress={() => showConfirm('Accord client', 'Le client a accepté l\'offre ? Passer à la demande de documents Walterre ?', () => confirmerAccordMutation.mutate({ id: Number(id) }))} />
+                onPress={() => showConfirm('Accord client', "Le client a accepté l'offre ? Passer à la demande de documents Walterre ?", () => confirmerAccordMutation.mutate({ id: Number(id) }))} />
             ) : null}
 
             {c.statut === 'documents_demandes' ? (
@@ -250,7 +288,7 @@ export default function ChantierDetailScreen() {
 
             {c.statut === 'validation_admin' ? (
               <>
-                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={() => showConfirm('Autoriser le chantier', 'Autoriser définitivement ce chantier ? Un email sera envoyé au client.', () => autoriserMutation.mutate({ id: Number(id) }), 'Autoriser')} loading={autoriserMutation.isPending} />
+                <ActionBtn label="✅ Autoriser le chantier" color="#10B981" onPress={handleAutoriser} loading={autoriserMutation.isPending} />
                 <ActionBtn label="❌ Refuser le dossier" color="#EF4444" onPress={() => setShowRefusModal(true)} loading={refuserMutation.isPending} />
               </>
             ) : null}
@@ -287,30 +325,6 @@ export default function ChantierDetailScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
-
-      {/* Modal offre */}
-      {showOffreModal ? (
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Offre de prix</Text>
-            <Text style={[styles.modalDesc, { color: colors.muted }]}>Prix à la tonne (€) *</Text>
-            <TextInput value={prixTonne} onChangeText={setPrixTonne} placeholder="Ex: 12.50" keyboardType="numeric"
-              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
-            <Text style={[styles.modalDesc, { color: colors.muted, marginTop: 8 }]}>Conditions d'acceptation *</Text>
-            <TextInput value={conditions} onChangeText={setConditions} placeholder="Ex: Terres classe 1-2, bon Walterre obligatoire..." multiline
-              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 60, textAlignVertical: 'top' }]} />
-            <View style={styles.modalBtns}>
-              <Pressable onPress={() => setShowOffreModal(false)} style={[styles.modalBtn, { backgroundColor: colors.border }]}>
-                <Text style={{ color: colors.foreground, fontWeight: '600' }}>Annuler</Text>
-              </Pressable>
-              <Pressable onPress={handleSendOffre} disabled={envoyerOffreMutation.isPending}
-                style={[styles.modalBtn, { backgroundColor: '#3B82F6', opacity: envoyerOffreMutation.isPending ? 0.7 : 1 }]}>
-                {envoyerOffreMutation.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Envoyer</Text>}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      ) : null}
 
       {/* Modal refus */}
       {showRefusModal ? (
@@ -362,6 +376,15 @@ const styles = StyleSheet.create({
   tonnageRef: { fontSize: 14 },
   alertBox: { backgroundColor: '#FEF2F2', borderRadius: 8, padding: 10 },
   alertText: { fontSize: 13, color: '#DC2626', fontWeight: '600' },
+  analyseRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, padding: 10 },
+  analyseText: { fontSize: 14, fontWeight: '600', flex: 1 },
+  analyseComment: { fontSize: 13, lineHeight: 18 },
+  odooRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 0.5, gap: 10 },
+  odooInfo: { flex: 1 },
+  odooLabel: { fontSize: 13, fontWeight: '600' },
+  odooDate: { fontSize: 12, marginTop: 2 },
+  odooToggle: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  odooToggleText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 4 },
   infoLabel: { fontSize: 13, flex: 1 },
   infoValue: { fontSize: 13, fontWeight: '500', flex: 2, textAlign: 'right' },

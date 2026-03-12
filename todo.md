@@ -236,3 +236,11 @@
 - [x] Coder l'URL de production versageterr-kkmfyarn.manus.space en dur dans constants/oauth.ts (fallback natif)
 - [x] Ajouter détection manus.space dans getApiBaseUrl pour retourner URL relative (même origine web)
 - [x] Rebuild web-dist avec la nouvelle URL
+
+## Fix v26 — Refonte page analyse + suppression offre automatique
+- [ ] Ajouter colonnes offreOdoo et dateOffreOdoo dans le schéma DB
+- [ ] Ajouter migration SQL pour les nouvelles colonnes
+- [ ] Ajouter route tRPC terminerAnalyse (remplace envoyerOffre)
+- [ ] Refaire page prevalidation/[id].tsx : 2 phases (capacité + finances/offre Odoo)
+- [ ] Supprimer page offre/[id].tsx
+- [ ] Nettoyer les références à envoyerOffre et offre_envoyee dans le code

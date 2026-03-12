@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS financesOk BOOLEAN; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS commentaireAnalyse TEXT; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS offreOdoo BOOLEAN DEFAULT FALSE; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS dateOffreOdoo VARCHAR(10);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS financesOk BOOLEAN; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS commentaireAnalyse TEXT; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS offreOdoo BOOLEAN DEFAULT FALSE; ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS dateOffreOdoo VARCHAR(10);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 885
+}
