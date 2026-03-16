@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS fermetures (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  dateDebut VARCHAR(10) NOT NULL,\n  dateFin VARCHAR(10) NOT NULL,\n  motif VARCHAR(255) NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user U3LLYobTuiiejTV.0d1109443244 --database KkmFyARn7ZrM9ULq2tuynk --execute CREATE TABLE IF NOT EXISTS fermetures (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  dateDebut VARCHAR(10) NOT NULL,\n  dateFin VARCHAR(10) NOT NULL,\n  motif VARCHAR(255) NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 165
+}
