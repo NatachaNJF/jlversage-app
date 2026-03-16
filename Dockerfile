@@ -7,9 +7,11 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Build server only
+# Build server and web app
 FROM deps AS builder
 COPY . .
+# Build the web app first
+RUN pnpm export
 # Build the backend server
 RUN pnpm build
 
