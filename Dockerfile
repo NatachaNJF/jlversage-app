@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS builder
 COPY . .
 # Build the web app first
-RUN pnpm export
+RUN npx expo export --platform web
 # Build the backend server
 RUN pnpm build
 
