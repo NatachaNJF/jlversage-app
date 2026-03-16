@@ -57,7 +57,7 @@ export function getApiBaseUrl(): string {
   }
 
   // Fallback for native apps: use production URL
-  return "https://versageterr-kkmfyarn.manus.space";
+  return "https://backend-production-1c955.up.railway.app";
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
