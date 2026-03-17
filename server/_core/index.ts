@@ -180,6 +180,8 @@ async function startServer() {
   
   if (fs.existsSync(webDistPath)) {
     console.log(`[web] Serving static files from ${webDistPath}`);
+    app.get("/", (req, res) => {res.sendFile(path.join(webDistPath, "vitrine.html"));
+});
     app.use(express.static(webDistPath, { index: false }));
     // Redirection racine vers le site vitrine si accès via jlversage.be
     app.get("/", (req, res) => {
