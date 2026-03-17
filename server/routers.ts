@@ -565,7 +565,3 @@ export const appRouter = router({
   }),
 });
 
-export type AppRouter = typeof appRouter;
-router.get("/", async (_req, res) => {
-  res.redirect("/vitrine.html");
-});
